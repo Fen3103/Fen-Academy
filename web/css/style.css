@@ -2156,3 +2156,9 @@ main.dashboard-main > section, main.dashboard-main > div:not(#mensajes){ animati
 }
 
 @media(max-width:1300px){ .teacher-grid{ grid-template-columns:1fr; } }
+
+/* Imágenes de los cursos de base y cierre */
+.lang-logica { --img:linear-gradient(135deg, #0f766e, #14b8a6 55%, #042f2e); }
+.lang-comp   { --img:linear-gradient(135deg, #334155, #64748b 55%, #0f172a); }
+.lang-ed     { --img:linear-gradient(135deg, #4338ca, #818cf8 55%, #1e1b4b); }
+.lang-proy   { --img:linear-gradient(135deg, #c2410c, #fb923c 55%, #431407); }

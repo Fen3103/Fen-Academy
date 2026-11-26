@@ -98,6 +98,10 @@ export const NOTICIAS = [
 /** Clase CSS con la foto que corresponde al lenguaje del curso. */
 export function claseLenguaje(lenguaje) {
     const l = String(lenguaje || "").toLowerCase();
+    if (l.includes("lógica") || l.includes("logica")) return "lang-logica";
+    if (l.includes("computación") || l.includes("computacion")) return "lang-comp";
+    if (l.includes("estructuras")) return "lang-ed";
+    if (l.includes("proyecto")) return "lang-proy";
     if (l.includes("python")) return "lang-python";
     if (l.includes("javascript") || l === "js" || l.includes("typescript")) return "lang-javascript";
     if (l.includes("html") || l.includes("css") || l.includes("web")) return "lang-web";
@@ -146,6 +150,13 @@ export const icono = (nombre, clase = "icono") =>
 export const alerta = (tipo, texto) => html`<div class="alert ${tipo}" role="${tipo === "error" ? "alert" : "status"}">
     ${icono(tipo === "error" ? "alerta" : "ok")}<span>${texto}</span>
     <button type="button" class="alert-cerrar" data-cerrar-alerta aria-label="Cerrar">${icono("cerrar")}</button></div>`;
+
+/** Orden recomendado para aprender desde cero (los demás lenguajes van al final, por nombre). */
+export const ORDEN_LENGUAJES = ["lógica de programación", "computación básica", "python", "git", "html y css", "javascript",
+    "cómo funciona la web", "bases de datos", "c#", "java", "estructuras de datos", "proyecto integrador"];
+export const posLenguaje = l => (ORDEN_LENGUAJES.indexOf(String(l).toLowerCase()) + 1) || 99;
+/** Compara dos lenguajes por prioridad y después alfabéticamente. */
+export const compararLenguajes = (a, b) => posLenguaje(a) - posLenguaje(b) || String(a).localeCompare(String(b));
 
 /** dd/mm/aaaa a partir de "aaaa-mm-dd..." */
 export const fechaDMA = d => (d ? String(d).slice(0, 10).split("-").reverse().join("/") : "Sin fecha");

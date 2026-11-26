@@ -1,7 +1,7 @@
 // Pantallas del ESTUDIANTE: inicio, matrícula, progreso, curso, actividad y examen.
 import { sb, q, rpc, ErrorFen, subirArchivo, descargar, EXT_ENTREGAS, ultimaPorActividad, resumen, aporte, requisito, mezclar } from "../api.js";
 import { html, raw, num, pct, fecha, fechaHora, vencida, chipEntrega, chipMatricula, chipTipo, tabs, panelTab,
-         enlaceExterno, exito, NOTICIAS, claseLenguaje, icono, iconoTipo, celdaFecha, etiquetasActividad, bloqueCurso, fechaDMA } from "../ui.js";
+         enlaceExterno, exito, NOTICIAS, claseLenguaje, icono, iconoTipo, celdaFecha, etiquetasActividad, bloqueCurso, fechaDMA, compararLenguajes } from "../ui.js";
 
 const CURSO_COLS = "id, codigo, nombre, lenguaje, nivel, descripcion, profesor:perfiles!cursos_profesor_id_fkey(nombre)";
 
@@ -127,7 +127,7 @@ export async function matricula({ perfil }) {
         <table class="matricula-table">
             <thead><tr><th>Código</th><th>Nombre</th><th>Nivel</th><th>Profesor</th><th>Requisito</th><th>Estado</th><th>✔</th></tr></thead>
             <tbody>
-                ${[...grupos].map(([leng, filas]) => html`<tr class="grupo-lenguaje"><td colspan="7">${leng}</td></tr>${filas.map(fila)}`)}
+                ${[...grupos].sort(([a], [b]) => compararLenguajes(a, b)).map(([leng, filas]) => html`<tr class="grupo-lenguaje"><td colspan="7">${leng}</td></tr>${filas.map(fila)}`)}
                 ${visibles.length ? "" : html`<tr><td colspan="7">Todavía no hay cursos abiertos. Tu profesor los habilita cuando empieza a darlos.</td></tr>`}
             </tbody>
         </table>

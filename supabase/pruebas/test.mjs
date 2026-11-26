@@ -208,5 +208,9 @@ check(langs.length === 7 && langs.every(r => r.n === 3), 'catálogo: 7 lenguajes
 check((await db.query(`select profesor_id from cursos where codigo='PY-2'`)).rows[0].profesor_id === profPy1, 'catálogo no toca cursos existentes');
 check((await db.query(`select count(*)::int n from cursos where codigo='CS-1' and profesor_id is null`)).rows[0].n === 1, 'cursos nuevos sin profesor');
 
+// Cursos de base y cierre (se cargan con el resto de las migraciones)
+const fund = (await db.query(`select codigo from cursos where codigo in ('LOG-1','LOG-2','COMP-1','WEB-1','ED-1','ED-2','PROY-1') and profesor_id is null`)).rows;
+check(fund.length === 7, 'cursos de base y cierre creados sin profesor: ' + fund.length);
+
 console.log(`\n${ok} ok, ${fail} fallas`);
 process.exit(fail ? 1 : 0);

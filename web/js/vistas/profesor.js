@@ -1,7 +1,7 @@
 // Pantallas del PROFESOR (y del admin en el "panel docente").
 // La base solo deja ver y modificar los cursos asignados al profesor.
 import { sb, q, rpc, ErrorFen, subirArchivo, descargar, borrarArchivos, EXT_RECURSOS, ultimaPorActividad, resumen } from "../api.js";
-import { html, raw, num, pct, fecha, fechaHora, chipEntrega, chipTipo, tabs, panelTab, enlaceExterno, exito, hoy, claseLenguaje, icono, iconoTipo, celdaFecha, etiquetasActividad } from "../ui.js";
+import { html, raw, num, pct, fecha, fechaHora, chipEntrega, chipTipo, tabs, panelTab, enlaceExterno, exito, hoy, claseLenguaje, icono, iconoTipo, celdaFecha, etiquetasActividad, compararLenguajes } from "../ui.js";
 import { listaRecursos, preguntaCorregida } from "./estudiante.js";
 
 const ESTADOS_ENTREGA = ["Pendiente", "Revisado", "Aprobado", "Rechazado"];
@@ -16,7 +16,8 @@ export async function inicio({ perfil }) {
     const todos = await q(sb.from("cursos").select("*, profesor:perfiles(nombre), matriculas(count), actividades(id)")
         .order("lenguaje").order("nivel").order("codigo"));
     // El admin ve todo; el profesor solo los cursos que eligió dar.
-    const cursos = esAdmin ? todos : todos.filter(c => c.profesor_id === perfil.id);
+    const cursos = (esAdmin ? todos : todos.filter(c => c.profesor_id === perfil.id))
+        .sort((a, b) => compararLenguajes(a.lenguaje, b.lenguaje) || a.nivel - b.nivel);
     const ids = cursos.map(c => c.id);
     const pendientes = ids.length ? await q(sb.from("entregas").select("id, actividad:actividades!inner(curso_id)")
         .eq("estado", "Pendiente").in("actividad.curso_id", ids)) : [];
@@ -67,7 +68,6 @@ export async function inicio({ perfil }) {
 
 // ---------------------------------------------------------------- catálogo ---
 
-const ORDEN_LENGUAJES = ["python", "c#", "html y css", "java", "git", "javascript", "bases de datos"];
 const NIVELES = { 1: "Principiante", 2: "Intermedio", 3: "Avanzado" };
 let filtroCatalogo = "todos";   // se conserva al tomar o dejar un curso
 
@@ -79,8 +79,7 @@ export async function catalogo({ perfil }) {
         if (!grupos.has(k)) grupos.set(k, { nombre: c.lenguaje, cursos: [] });
         grupos.get(k).cursos.push(c);
     }
-    const pos = k => (ORDEN_LENGUAJES.indexOf(k) + 1) || 99;
-    const lista = [...grupos.entries()].sort(([a], [b]) => pos(a) - pos(b) || a.localeCompare(b));
+    const lista = [...grupos.entries()].sort(([a], [b]) => compararLenguajes(a, b));
     if (!lista.some(([k]) => k === filtroCatalogo)) filtroCatalogo = "todos";
     const doy = todos.filter(c => c.profesor_id === perfil.id).length;
 
