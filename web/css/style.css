@@ -2697,3 +2697,33 @@ html[data-tema="claro"] .profile-hero p{ color:var(--texto-3); }
             url('https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=900&q=70') center/cover no-repeat;
     }
 }
+
+/* Contraseña con ojo */
+.campo-pass{ position:relative; display:block; width:100%; }
+.campo-pass input{ width:100%; padding-right:46px !important; }
+.ojo{
+    position:absolute; right:6px; top:50%; transform:translateY(-50%); width:34px; height:34px; border-radius:10px;
+    display:grid; place-items:center; background:none; border:0; cursor:pointer; color:var(--texto-3); transition:color .15s, background .15s;
+}
+.ojo:hover{ color:var(--texto); background:rgba(var(--tinta-rgb),.07); }
+.ojo.activo{ color:var(--acento); }
+.ojo .icono{ width:18px; height:18px; }
+
+/* Errores por campo */
+input.invalido, select.invalido, textarea.invalido{
+    border:1px solid var(--mal-txt) !important; box-shadow:0 0 0 3px rgba(239,68,68,.15) !important;
+}
+.campo-error{
+    display:flex !important; align-items:center; gap:6px; margin:-4px 0 4px; font-size:12.5px; font-weight:600;
+    color:var(--mal-txt) !important; text-transform:none !important; letter-spacing:0 !important; animation:aparecer .2s ease-out;
+}
+.campo-error::before{ content:"!"; flex:0 0 16px; height:16px; border-radius:50%; display:grid; place-items:center; background:var(--mal-txt); color:var(--superficie); font-size:11px; font-weight:800; }
+.msg-error{ display:flex !important; align-items:center; gap:10px; background:rgba(239,68,68,.14) !important; color:var(--mal-txt) !important; border:1px solid rgba(239,68,68,.35); font-weight:600; }
+.msg-error .icono{ width:18px; height:18px; flex:0 0 18px; }
+.msg-success{ background:rgba(34,197,94,.14) !important; color:var(--ok-txt) !important; border:1px solid rgba(34,197,94,.35); font-weight:600; }
+form.sacudir{ animation:sacudir .35s ease; }
+@keyframes sacudir{ 20%{ transform:translateX(-6px); } 40%{ transform:translateX(6px); } 60%{ transform:translateX(-4px); } 80%{ transform:translateX(3px); } }
+.auth-box .ojo, .auth-box .ojo:hover{ padding:0; background:none; color:var(--texto-3); border-radius:10px; }
+.auth-box .ojo:hover{ background:rgba(var(--tinta-rgb),.08); color:var(--texto); }
+.auth-box .ojo.activo{ color:var(--acento); }
+.auth-box .campo-error{ margin:-8px 0 0; }

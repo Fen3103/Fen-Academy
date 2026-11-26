@@ -14,6 +14,7 @@ import * as adm from "./vistas/admin.js";
 import * as cuenta from "./vistas/cuenta.js";
 import * as cal from "./vistas/calendario.js";
 import { renderMarkdown, copiarCodigo } from "./md.js";
+import { mejorarFormularios, validarFormulario, alternarOjo } from "./formularios.js";
 import { aplicarTema, alternarTema, temaEfectivo, elegirTema, elegirAcento } from "./tema.js";
 
 aplicarTema();
@@ -94,7 +95,7 @@ function itemsMenu(rutaActual) {
         if (r === "progreso") return ["progreso", "curso", "actividad", "examen", "certificado"].includes(raiz);
         return raiz === r;
     };
-    const ICONO = { inicio: "home", matricula: "matricula", progreso: "chart", docente: "class", catalogo: "capas", calendario: "calendar", plan: "capas", admin: "shield", perfil: "user", ajustes: "sun" };
+    const ICONO = { inicio: "home", matricula: "matricula", progreso: "chart", docente: "class", catalogo: "capas", calendario: "calendar", plan: "capas", admin: "shield", perfil: "user", ajustes: "engranaje" };
     return { items, activo, ICONO };
 }
 
@@ -206,6 +207,7 @@ export async function dibujar({ silencioso = false } = {}) {
     acciones = vista.acciones || {};
     document.title = `${vista.titulo || "Inicio"} | Fen Academy`;
     app.innerHTML = vista.auth || !perfil || modoRecuperacion || !configurado ? layoutAuth(vista) : layout(ruta, vista);
+    mejorarFormularios(app);
     vista.alMontar?.(app, ctx);
     renderMarkdown(app);
     if (silencioso) window.scrollTo(0, scroll);
@@ -223,7 +225,7 @@ function cerrarAlerta(a) {
 function mostrarError(texto) {
     const caja = document.getElementById("mensajes");
     const enAuth = !!document.querySelector(".auth-box");
-    if (caja) caja.innerHTML = enAuth ? html`<div class="msg-error">${texto}</div>`
+    if (caja) caja.innerHTML = enAuth ? html`<div class="msg-error" role="alert">${icono("alerta")}<span>${texto}</span></div>`
         : html`<div class="alerts-box no-side-padding">${alerta("error", texto)}</div>`;
     caja?.scrollIntoView({ behavior: "smooth", block: "center" });
 }
@@ -249,6 +251,10 @@ document.addEventListener("submit", ev => {
     const form = ev.target.closest("form[data-accion]");
     if (!form) return;
     ev.preventDefault();
+    if (!validarFormulario(form)) {
+        mostrarError("Revisá los campos marcados en rojo.");
+        return;
+    }
     const datos = Object.fromEntries(new FormData(form).entries());
     form.querySelectorAll("input[type=file]").forEach(i => (datos[i.name] = i.files[0] || null));
     confirmarSiHace(form).then(ok => ok && ejecutar(form.dataset.accion, form, { ...form.dataset, ...datos }));
@@ -300,6 +306,8 @@ document.addEventListener("click", ev => {
     }
     if (ev.target.closest("[data-imprimir]")) return window.print();
     if (ev.target.closest("[data-alternar-tema]")) return alternarTema();
+    const ojo = ev.target.closest("[data-ojo]");
+    if (ojo) return alternarOjo(ojo);
     const opTema = ev.target.closest("[data-tema-opcion]");
     if (opTema) {
         elegirTema(opTema.dataset.temaOpcion);
