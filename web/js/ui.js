@@ -93,3 +93,13 @@ export const NOTICIAS = [
     ["Git", "Hacé commits pequeños y con buenos mensajes",
         "Un historial claro te permite volver atrás, entender qué cambió y mostrar tu progreso en GitHub."],
 ];
+
+/** Clase CSS con la foto que corresponde al lenguaje del curso. */
+export function claseLenguaje(lenguaje) {
+    const l = String(lenguaje || "").toLowerCase();
+    if (l.includes("python")) return "lang-python";
+    if (l.includes("javascript") || l === "js" || l.includes("typescript")) return "lang-javascript";
+    if (l.includes("html") || l.includes("css") || l.includes("web")) return "lang-web";
+    if (l.includes("java")) return "lang-java";
+    return "lang-otro";
+}

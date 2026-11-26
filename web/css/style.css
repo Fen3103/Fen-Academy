@@ -1624,3 +1624,53 @@ button.activity-link{ background:none; border:none; padding:0; font:inherit; fon
 .delivery-card .estado-lock{ background:#4b5563; }
 .delivery-card .grade-chip{ background:#4b5563; border-radius:4px; }
 .delivery-card .texto-alerta{ background:none; width:auto; height:auto; display:inline; font-size:inherit; }
+
+/* =========================================================
+   Imágenes según el lenguaje del curso (fotos de Unsplash)
+   ========================================================= */
+.lang-python     { --img:url('https://images.unsplash.com/photo-1515879218367-8466d910aaa4?auto=format&fit=crop&w=1200&q=80'); }
+.lang-javascript { --img:url('https://images.unsplash.com/photo-1579468118864-1b9ea3c0db4a?auto=format&fit=crop&w=1200&q=80'); }
+.lang-web        { --img:url('https://images.unsplash.com/photo-1542831371-29b0f74f9713?auto=format&fit=crop&w=1200&q=80'); }
+.lang-java       { --img:url('https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=1200&q=80'); }
+.lang-otro       { --img:url('https://images.unsplash.com/photo-1516979187457-637abb4f9353?auto=format&fit=crop&w=1200&q=80'); }
+
+.course-banner[class*="lang-"]{
+    background:linear-gradient(rgba(0,0,0,.15), rgba(0,0,0,.55)), var(--img) center/cover no-repeat;
+}
+
+/* Miniatura arriba de las tarjetas del inicio del estudiante */
+.course-thumb{
+    height:96px;
+    margin:-16px -18px 14px;
+    border-radius:14px 14px 0 0;
+    background:linear-gradient(rgba(0,0,0,.1), rgba(0,0,0,.35)), var(--img) center/cover no-repeat;
+}
+
+/* Miniatura a la izquierda en las listas de cursos (panel docente) */
+.course-item.con-imagen{ display:flex; gap:16px; align-items:center; }
+.course-item.con-imagen .course-thumb{ flex:0 0 140px; height:92px; margin:0; border-radius:10px; }
+.course-item.con-imagen > div:last-child{ min-width:0; }
+
+/* Panel del estudiante y del docente */
+.hero-dashboard-card{
+    background:
+        linear-gradient(90deg, rgba(17,24,39,.96) 35%, rgba(17,24,39,.55)),
+        url('https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=1400&q=80') center/cover no-repeat;
+}
+.hero-docente{
+    background:
+        linear-gradient(90deg, rgba(17,24,39,.96) 35%, rgba(17,24,39,.55)),
+        url('https://images.unsplash.com/photo-1517694712202-14dd9538aa97?auto=format&fit=crop&w=1400&q=80') center/cover no-repeat;
+}
+
+/* Fondo del inicio de sesión y registro */
+.auth-page{
+    background:
+        linear-gradient(rgba(6,10,22,.86), rgba(6,10,22,.92)),
+        url('https://images.unsplash.com/photo-1461749280684-dccba630e2f6?auto=format&fit=crop&w=1600&q=70') center/cover no-repeat fixed;
+}
+
+@media(max-width:700px){
+    .course-item.con-imagen{ flex-direction:column; align-items:stretch; }
+    .course-item.con-imagen .course-thumb{ flex-basis:auto; height:90px; }
+}

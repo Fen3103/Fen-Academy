@@ -1,7 +1,7 @@
 // Pantallas del PROFESOR (y del admin en el "panel docente").
 // La base solo deja ver y modificar los cursos asignados al profesor.
 import { sb, q, rpc, ErrorFen, subirArchivo, descargar, borrarArchivos, EXT_RECURSOS, ultimaPorActividad, resumen } from "../api.js";
-import { html, raw, num, pct, fecha, fechaHora, chipEntrega, chipTipo, tabs, panelTab, enlaceExterno, exito, hoy } from "../ui.js";
+import { html, raw, num, pct, fecha, fechaHora, chipEntrega, chipTipo, tabs, panelTab, enlaceExterno, exito, hoy, claseLenguaje } from "../ui.js";
 import { listaRecursos, preguntaCorregida } from "./estudiante.js";
 
 const ESTADOS_ENTREGA = ["Pendiente", "Revisado", "Aprobado", "Rechazado"];
@@ -25,6 +25,10 @@ export async function inicio({ perfil }) {
     return {
         titulo: "Panel docente",
         html: html`
+<div class="hero-dashboard-card hero-docente"><div class="hero-dashboard-text">
+    <h1>Hola, ${perfil.nombre}</h1>
+    <p>Prepará tus clases, publicá exámenes y revisá las entregas de tus estudiantes.</p>
+</div></div>
 <section class="stats-grid stats-grid-3">
     <div class="stat-card"><span>${esAdmin ? "Cursos (todos)" : "Mis cursos"}</span><strong>${cursos.length}</strong></div>
     <div class="stat-card"><span>Estudiantes</span><strong>${estudiantes}</strong></div>
@@ -35,7 +39,9 @@ export async function inicio({ perfil }) {
     <div class="course-list">
         ${cursos.map(c => html`
         <a href="#/docente/curso/${c.id}" class="course-link-card">
-            <div class="course-item">
+            <div class="course-item con-imagen">
+                <div class="course-thumb ${claseLenguaje(c.lenguaje)}"></div>
+                <div>
                 <h3>${c.codigo} · ${c.nombre}</h3>
                 <p>${c.lenguaje} · Nivel ${c.nivel}${esAdmin ? " · Profesor: " + (c.profesor?.nombre ?? "sin asignar") : ""}</p>
                 <p>${c.descripcion}</p>
@@ -43,6 +49,7 @@ export async function inicio({ perfil }) {
                     <span>${c.matriculas[0]?.count ?? 0} estudiantes</span>
                     <span>${c.actividades.length} actividades</span>
                     ${porRevisar(c.id) ? html`<span class="meta-alerta">${porRevisar(c.id)} por revisar</span>` : ""}
+                </div>
                 </div>
             </div>
         </a>`)}
@@ -112,7 +119,7 @@ export async function curso({ params, query }) {
     return {
         titulo: c.nombre + " (docente)", seccion: c.nombre, volver: ["docente", "Mis cursos"],
         html: html`
-<section class="course-banner"><div class="course-banner-overlay">
+<section class="course-banner ${claseLenguaje(c.lenguaje)}"><div class="course-banner-overlay">
     <h1>${c.nombre}</h1>
     <p>${c.codigo} · ${c.lenguaje} · Nivel ${c.nivel} · ${matriculas.length} estudiantes · Vista docente</p>
 </div></section>

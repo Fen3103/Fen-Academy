@@ -1,7 +1,7 @@
 // Pantallas del ESTUDIANTE: inicio, matrícula, progreso, curso, actividad y examen.
 import { sb, q, rpc, ErrorFen, subirArchivo, descargar, EXT_ENTREGAS, ultimaPorActividad, resumen, aporte, requisito, mezclar } from "../api.js";
 import { html, raw, num, pct, fecha, fechaHora, vencida, chipEntrega, chipMatricula, chipTipo, tabs, panelTab,
-         enlaceExterno, exito, NOTICIAS } from "../ui.js";
+         enlaceExterno, exito, NOTICIAS, claseLenguaje } from "../ui.js";
 
 const CURSO_COLS = "id, codigo, nombre, lenguaje, nivel, descripcion, profesor:perfiles!cursos_profesor_id_fkey(nombre)";
 
@@ -48,6 +48,7 @@ export async function inicio({ perfil }) {
             ${matriculas.map(m => html`
             <a href="#/curso/${m.curso_id}" class="course-link-card">
                 <div class="quick-card course-card">
+                    <div class="course-thumb ${claseLenguaje(m.curso.lenguaje)}"></div>
                     <h3>${m.curso.codigo} · ${m.curso.nombre}</h3>
                     <p><strong>Lenguaje:</strong> ${m.curso.lenguaje} · <strong>Nivel:</strong> ${m.curso.nivel}</p>
                     <p>${m.curso.descripcion}</p>
@@ -191,7 +192,7 @@ export async function curso({ perfil, params, query }) {
     return {
         titulo: c.nombre,
         html: html`
-<section class="course-banner"><div class="course-banner-overlay">
+<section class="course-banner ${claseLenguaje(c.lenguaje)}"><div class="course-banner-overlay">
     <h1>${c.nombre}</h1>
     <p>${c.codigo} · ${c.lenguaje} · Nivel ${c.nivel} · Profesor: ${c.profesor?.nombre ?? "por asignar"} · ${chipMatricula(mat.estado)}</p>
 </div></section>
