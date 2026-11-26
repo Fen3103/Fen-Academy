@@ -2896,3 +2896,23 @@ form.sacudir{ animation:sacudir .35s ease; }
 .ingresar{ font-size:15px; padding:9px 16px; border-radius:10px; }
 .ingresar .icono{ width:16px; height:16px; }
 .pill-pendiente{ font-size:13px; padding:5px 10px; }
+
+/* Monitores pequeños o de poca altura (p. ej. 1366x768 con barras del navegador) */
+@media (min-width: 901px) and (max-height: 820px), (min-width: 901px) and (max-width: 1440px) {
+    .logo-box{ padding:16px 20px 14px; }
+    .profile-strip{ padding:10px 18px; }
+    .profile-avatar{ width:34px; height:34px; }
+    .sidebar-nav{ padding:8px 0; gap:2px; }
+    .nav-item{ padding:10px 20px; font-size:14px; }
+    .logout-link{ margin:10px 14px; padding:10px; border-radius:12px; }
+    .dashboard-main{ padding:14px 18px; }
+    .topbar{ padding:10px 18px !important; margin-bottom:14px; }
+    .saludo{ padding:16px 22px !important; }
+    .saludo h1{ font-size:22px; }
+    .tarjeta-cabecera{ padding:12px 16px; }
+    .cursos-grid{ padding:14px; }
+    .curso-card .curso-bloque{ height:110px; }
+    .curso-card-cuerpo{ padding:12px 16px 14px; gap:6px; }
+    .curso-card-titulo h3{ font-size:16px; }
+    .curso-card p{ font-size:14px; }
+}
