@@ -6,6 +6,8 @@ import { html, raw, num, pct, fecha, fechaHora, vencida, chipEntrega, chipMatric
 const MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
 
 // "*" para incluir fecha_inicio/fecha_fin/nota_minima si la migración ya está (y no fallar si no).
+import { tarjetaTitulos } from "./titulo.js";
+
 const CURSO_COLS = "*, profesor:perfiles!cursos_profesor_id_fkey(nombre)";
 
 async function misMatriculas(uid) {
@@ -241,6 +243,8 @@ export async function progreso({ perfil }) {
     </div>
     <div class="camino-barra"><span style="width:${plan.pct}%"></span></div>
 </a>
+
+${tarjetaTitulos(cursos, estadoDe)}
 
 <section class="tarjeta camino-tarjeta">
     <div class="tarjeta-cabecera">

@@ -13,6 +13,7 @@ import * as prof from "./vistas/profesor.js";
 import * as adm from "./vistas/admin.js";
 import * as cuenta from "./vistas/cuenta.js";
 import * as cal from "./vistas/calendario.js";
+import * as tit from "./vistas/titulo.js";
 import { renderMarkdown, copiarCodigo } from "./md.js";
 import { mejorarFormularios, validarFormulario, alternarOjo } from "./formularios.js";
 import { aplicarTema, alternarTema, temaEfectivo, elegirTema, elegirAcento, aparienciaDeCuenta } from "./tema.js";
@@ -29,6 +30,7 @@ const RUTAS = [
     ["progreso", est.progreso, [E]],
     ["curso/:id", est.curso, [E]],
     ["certificado/:id", est.certificado, [E]],
+    ["titulo", tit.titulo, [E, P, A]],
     ["plan", est.plan, [E]],
     ["actividad/:id", est.actividad, [E]],
     ["examen/:id", est.rendir, [E]],
@@ -99,7 +101,7 @@ function itemsMenu(rutaActual) {
     }[perfil.rol];
     const activo = r => {
         const raiz = rutaActual.split("/")[0];
-        if (r === "progreso") return ["progreso", "curso", "actividad", "examen", "certificado"].includes(raiz);
+        if (r === "progreso") return ["progreso", "curso", "actividad", "examen", "certificado", "titulo"].includes(raiz);
         return raiz === r;
     };
     const ICONO = { inicio: "home", matricula: "matricula", progreso: "chart", docente: "class", catalogo: "capas", calendario: "calendar", plan: "capas", admin: "shield", perfil: "user", ajustes: "engranaje" };

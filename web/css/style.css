@@ -2769,3 +2769,109 @@ form.sacudir{ animation:sacudir .35s ease; }
 .form-seccion .icono{ width:16px; height:16px; color:var(--acento); }
 .curso-periodo{ display:flex; align-items:center; gap:6px; font-size:14px !important; margin-top:6px; opacity:.9; }
 .curso-periodo .icono{ width:15px; height:15px; }
+
+/* =========================================================
+   Títulos: tarjetas en Progreso y diploma imprimible
+   ========================================================= */
+.titulos-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(min(250px, 100%), 1fr)); gap:12px; padding:16px 18px 18px; }
+.titulo-card{
+    display:flex; align-items:center; gap:12px; padding:14px; border-radius:14px; text-decoration:none; color:inherit;
+    background:var(--campo); border:1px solid rgba(var(--tinta-rgb),.08); transition:border-color .15s, transform .15s;
+}
+.titulo-card:hover{ border-color:rgba(var(--acento-rgb),.45); transform:translateY(-1px); }
+.titulo-card > div{ flex:1; min-width:0; }
+.titulo-card strong{ display:block; font-size:14px; }
+.titulo-card small{ display:block; color:var(--texto-3); font-size:12px; margin-top:2px; }
+.titulo-barra{ display:block; height:5px; margin-top:8px; border-radius:99px; background:rgba(var(--tinta-rgb),.08); overflow:hidden; }
+.titulo-barra span{ display:block; height:100%; background:linear-gradient(90deg, var(--acento), #facc15); border-radius:99px; }
+.titulo-medalla{ flex:0 0 40px; width:40px; height:40px; border-radius:50%; display:grid; place-items:center; background:rgba(var(--tinta-rgb),.07); color:var(--texto-4); }
+.titulo-medalla .icono{ width:20px; height:20px; }
+.titulo-medalla.grande{ width:72px; height:72px; margin:0 auto 10px; }
+.titulo-medalla.grande .icono{ width:34px; height:34px; }
+.titulo-card.ganado{ background:linear-gradient(135deg, rgba(250,204,21,.16), var(--campo) 70%); border-color:rgba(250,204,21,.45); }
+.titulo-card.ganado .titulo-medalla{ background:radial-gradient(circle at 35% 30%, #fff3b0, #e2b13c 50%, #9a6b12); color:#5c3d06; box-shadow:0 4px 14px rgba(226,177,60,.4); }
+.titulo-card.mayor{ grid-column:1 / -1; border-style:dashed; }
+.titulo-card.mayor.ganado{ border-style:solid; }
+.titulo-faltan{ display:flex; flex-wrap:wrap; gap:6px; justify-content:center; margin:6px 0 16px; }
+.titulo-bloqueado .vacio{ padding:36px 18px; }
+
+.diploma-escena{ overflow-x:auto; padding:6px 0 24px; }
+.diploma{
+    --oro:#b07d1a; --tinta-dip:#3a2a14;
+    width:min(1000px, 100%); min-width:720px; margin:0 auto; aspect-ratio:1.414; padding:16px; border-radius:6px;
+    color:var(--tinta-dip); font-family:"Cormorant Garamond", Georgia, serif;
+    background:
+        radial-gradient(ellipse at center, rgba(255,250,235,0) 55%, rgba(170,130,60,.18)),
+        repeating-radial-gradient(circle at 50% 50%, rgba(176,125,26,.035) 0 2px, transparent 2px 9px),
+        linear-gradient(135deg, #fbf4e2, #f3e6c6 55%, #f8eed6);
+    box-shadow:0 30px 70px rgba(0,0,0,.45), inset 0 0 0 1px rgba(176,125,26,.4);
+}
+.dip-marco{
+    position:relative; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center;
+    padding:34px 70px 26px; border:2px solid var(--oro); outline:1px solid rgba(176,125,26,.5); outline-offset:-9px;
+    box-shadow:inset 0 0 0 12px rgba(255,250,235,.25), inset 0 0 0 13px rgba(176,125,26,.35);
+}
+.dip-esq{ position:absolute; width:78px; height:78px; color:var(--oro); }
+.dip-esq svg{ width:100%; height:100%; }
+.dip-esq.e1{ top:6px; left:6px; } .dip-esq.e2{ top:6px; right:6px; transform:scaleX(-1); }
+.dip-esq.e3{ bottom:6px; left:6px; transform:scaleY(-1); } .dip-esq.e4{ bottom:6px; right:6px; transform:scale(-1,-1); }
+.dip-marca-agua{ position:absolute; inset:0; display:grid; place-items:center; pointer-events:none; opacity:.06; filter:grayscale(1) sepia(1); }
+.dip-marca-agua .isotipo{ width:46%; height:auto; aspect-ratio:1; filter:none; }
+.dip-marca-agua .isotipo-cursor{ animation:none; }
+.dip-cabecera{ display:flex; align-items:center; gap:14px; margin-bottom:6px; position:relative; }
+.dip-logo .isotipo{ width:56px; height:56px; filter:none; }
+.dip-logo .isotipo-cursor{ animation:none; }
+.dip-academia{ margin:0; font-size:30px; font-weight:700; letter-spacing:.22em; text-transform:uppercase; color:var(--tinta-dip); line-height:1; }
+.dip-escuela{ margin:4px 0 0; font-size:14px; letter-spacing:.42em; text-transform:uppercase; color:var(--oro); text-align:left; }
+.dip-por{ margin:14px 0 0; font-style:italic; font-size:20px; color:#6b5532; }
+.dip-nombre{
+    margin:2px 0 4px; font-family:"Great Vibes", cursive; font-weight:400; font-size:64px; line-height:1.1; color:#2a1d0b;
+    padding:0 40px 4px; border-bottom:1px solid rgba(176,125,26,.6);
+}
+.dip-texto{ max-width:640px; margin:10px auto 4px; font-size:19px; line-height:1.45; color:#4a3a20; }
+.dip-titulo{
+    margin:6px 0 8px; font-size:44px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; line-height:1.1;
+    background:linear-gradient(180deg, #c9962c, #8a5d0c); -webkit-background-clip:text; background-clip:text; color:transparent;
+}
+.diploma-mayor .dip-titulo{ font-size:48px; }
+.dip-cursos{ display:flex; flex-wrap:wrap; justify-content:center; gap:6px; max-width:720px; margin:2px auto 8px; }
+.dip-cursos span{ font-family:"JetBrains Mono", monospace; font-size:11px; padding:2px 8px; border:1px solid rgba(176,125,26,.5); border-radius:99px; color:#6b5532; background:rgba(255,250,235,.5); }
+.dip-fecha{ margin:6px 0 0; font-style:italic; font-size:17px; color:#4a3a20; }
+.dip-firmas{ display:grid; grid-template-columns:1fr auto 1fr; align-items:end; gap:20px; width:100%; max-width:780px; margin-top:auto; }
+.dip-firma{ display:flex; flex-direction:column; align-items:center; }
+.dip-rubrica{ font-family:"Great Vibes", cursive; font-size:30px; color:#2a1d0b; line-height:1.2; white-space:nowrap; }
+.dip-linea{ display:block; width:100%; max-width:240px; border-top:1px solid #6b5532; margin-top:2px; }
+.dip-firma small{ margin-top:4px; font-size:13px; letter-spacing:.18em; text-transform:uppercase; color:#6b5532; }
+.dip-sello{ width:112px; height:140px; margin-bottom:-14px; filter:drop-shadow(0 4px 6px rgba(90,60,10,.35)); }
+.dip-pie{ margin:18px 0 0; font-family:"Inter", sans-serif; font-size:10px; letter-spacing:.06em; color:#8a7550; }
+
+@media print{
+    .diploma-escena{ overflow:visible; padding:0; }
+    .diploma{ width:100%; min-width:0; box-shadow:none; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+    .titulo-card, .cert-acciones .etq{ display:none; }
+}
+
+/* El diploma escala con su propio ancho (cqw = 1% del ancho del diploma) */
+.diploma{ container-type:inline-size; min-width:0 !important; width:min(1000px, 100%); padding:1.6cqw; }
+.dip-marco{ height:auto; min-height:100%; padding:3.2cqw 7cqw 2.4cqw; }
+.dip-esq{ width:7.8cqw; height:7.8cqw; }
+.dip-cabecera{ gap:1.4cqw; margin-bottom:.4cqw; }
+.dip-logo .isotipo{ width:5.4cqw; height:5.4cqw; }
+.dip-academia{ font-size:3cqw; }
+.dip-escuela{ font-size:1.35cqw; margin-top:.4cqw; }
+.dip-por{ font-size:2cqw; margin-top:1.2cqw; }
+.dip-nombre{ font-size:5.6cqw; padding:0 4cqw .3cqw; }
+.dip-texto{ font-size:1.85cqw; max-width:66cqw; margin:.9cqw auto .3cqw; }
+.dip-titulo{ font-size:4.2cqw; margin:.5cqw 0 .7cqw; }
+.diploma-mayor .dip-titulo{ font-size:4.6cqw; }
+.dip-cursos{ gap:.5cqw; max-width:74cqw; margin:.2cqw auto .7cqw; }
+.dip-cursos span{ font-size:1.05cqw; padding:.15cqw .8cqw; }
+.dip-fecha{ font-size:1.65cqw; margin-top:.4cqw; }
+.dip-firmas{ gap:2cqw; max-width:80cqw; margin-top:1.6cqw; }
+.dip-rubrica{ font-size:2.9cqw; }
+.dip-linea{ max-width:24cqw; }
+.dip-firma small{ font-size:1.2cqw; margin-top:.4cqw; }
+.dip-sello{ width:10.5cqw; height:13cqw; margin-bottom:-1.2cqw; }
+.dip-pie{ font-size:.95cqw; margin-top:1.6cqw; }
+.diploma-escena{ overflow:visible; }
+.titulo-card.mayor > .icono{ width:18px; height:18px; color:var(--texto-3); flex:0 0 18px; }
