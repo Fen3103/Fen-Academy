@@ -317,3 +317,13 @@ if (configurado) {
     try { await cargarPerfil(); } catch (err) { flashError(mensajeDeError(err)); }
 }
 dibujar();
+
+// Zonas de subida: muestran el nombre del archivo elegido.
+document.addEventListener("change", ev => {
+    const zona = ev.target.closest?.(".zona-archivo");
+    if (!zona) return;
+    const f = ev.target.files?.[0];
+    zona.classList.toggle("con-archivo", !!f);
+    const n = zona.querySelector(".zona-nombre");
+    if (n) n.textContent = f ? `${f.name} · ${(f.size / 1048576).toFixed(1)} MB` : "Ningún archivo seleccionado";
+});

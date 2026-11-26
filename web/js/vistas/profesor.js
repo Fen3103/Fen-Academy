@@ -1,7 +1,7 @@
 // Pantallas del PROFESOR (y del admin en el "panel docente").
 // La base solo deja ver y modificar los cursos asignados al profesor.
 import { sb, q, rpc, ErrorFen, subirArchivo, descargar, borrarArchivos, EXT_RECURSOS, ultimaPorActividad, resumen } from "../api.js";
-import { html, raw, num, pct, fecha, fechaHora, chipEntrega, chipTipo, tabs, panelTab, enlaceExterno, exito, hoy, claseLenguaje, icono } from "../ui.js";
+import { html, raw, num, pct, fecha, fechaHora, chipEntrega, chipTipo, tabs, panelTab, enlaceExterno, exito, hoy, claseLenguaje, icono, iconoTipo, celdaFecha, etiquetasActividad } from "../ui.js";
 import { listaRecursos, preguntaCorregida } from "./estudiante.js";
 
 const ESTADOS_ENTREGA = ["Pendiente", "Revisado", "Aprobado", "Rechazado"];
@@ -264,7 +264,7 @@ ${tabs([{ id: "clases", texto: "Clases", icono: "class" }, { id: "evaluacion", t
     <section class="teacher-grid">
         <div class="course-panel">
             <div class="panel-title">Crear actividad</div>
-            <form data-accion="crearActividad" class="teacher-form">
+            <form data-accion="crearActividad" class="teacher-form form-limpio">
                 <label>Tipo</label>
                 <select name="tipo">
                     <option value="entrega">Entrega de trabajo (archivo o repositorio)</option>
@@ -284,27 +284,31 @@ ${tabs([{ id: "clases", texto: "Clases", icono: "class" }, { id: "evaluacion", t
         </div>
         <div class="course-panel">
             <div class="panel-title">Desglose de evaluación</div>
-            <div class="evaluation-wrapper"><table class="evaluation-table">
-                <thead><tr><th>Actividad</th><th>Fecha</th><th>Valor</th><th>Entregas</th><th></th></tr></thead>
+            <div class="act-tabla-wrap"><table class="act-tabla">
+                <thead><tr><th class="col-tipo">Tipo</th><th>Actividad</th><th class="centro">Fecha límite</th><th class="centro">Valor</th><th class="centro">Entregas</th><th></th></tr></thead>
                 <tbody>
                     ${actividades.map(a => {
                         const cant = entregas.filter(e => e.actividad_id === a.id).length;
                         return html`<tr>
-                            <td><strong>${a.titulo}</strong> ${chipTipo(a.tipo)}
-                                ${!a.publicada ? html`<span class="estado-chip estado-wait">Borrador</span>` : ""}
-                                <p>${a.clase ? `Clase ${a.clase.orden}: ${a.clase.titulo}` : "General"}</p></td>
-                            <td>${fecha(a.fecha_limite)}</td><td>${pct(a.valor)}</td><td>${cant}</td>
-                            <td><div class="resource-card-actions">
-                                ${a.tipo === "examen" ? html`<a class="admin-btn" href="#/docente/examen/${a.id}">Preguntas</a>` : ""}
+                            <td class="col-tipo">${iconoTipo(a.tipo)}</td>
+                            <td><strong class="act-titulo">${a.titulo}</strong>
+                                ${!a.publicada ? html`<span class="estado-chip estado-wait"><i class="punto"></i>Borrador</span>` : ""}
+                                ${etiquetasActividad(a)}</td>
+                            <td class="centro">${celdaFecha(a.fecha_limite)}</td>
+                            <td class="centro"><span class="valor-pill">${pct(a.valor)}</span></td>
+                            <td class="centro"><span class="contador-pill">${cant}</span></td>
+                            <td><div class="acciones-fila">
+                                ${a.tipo === "examen" ? html`<a class="admin-btn secundario" href="#/docente/examen/${a.id}">${icono("eval")} Preguntas</a>` : ""}
                                 <button type="button" class="admin-btn danger" data-accion="eliminarActividad" data-id="${a.id}"
                                     data-confirm="¿Eliminar «${a.titulo}» y sus ${cant} entregas? No se puede deshacer.">Eliminar</button>
                             </div></td></tr>`;
                     })}
-                    ${actividades.length ? "" : html`<tr><td colspan="5">No hay actividades registradas.</td></tr>`}
-                    <tr class="evaluation-total-row"><td colspan="2">Total del desglose</td><td>${num(totalValor)}/100%</td>
-                        <td colspan="2">${totalValor >= 100 ? html`<span class="estado-chip estado-ok">Completo</span>`
-                            : html`<span class="estado-chip estado-lock">Faltan ${pct(disponible)}</span>`}</td></tr>
+                    ${actividades.length ? "" : html`<tr><td colspan="6" class="vacio-celda">${icono("eval")}<br>Todavía no hay actividades. Creá la primera con el formulario.</td></tr>`}
                 </tbody>
+                <tfoot><tr><td colspan="3">Total del desglose</td>
+                    <td class="centro"><span class="valor-pill">${num(totalValor)}/100%</span></td>
+                    <td colspan="2" class="centro">${totalValor >= 100 ? html`<span class="estado-chip estado-ok"><i class="punto"></i>Completo</span>`
+                        : html`<span class="estado-chip estado-wait"><i class="punto"></i>Faltan ${pct(disponible)}</span>`}</td></tr></tfoot>
             </table></div>
         </div>
     </section>

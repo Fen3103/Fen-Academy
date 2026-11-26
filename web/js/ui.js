@@ -35,7 +35,7 @@ export function hoy() {
 }
 export const vencida = fechaLimite => !!fechaLimite && fechaLimite < hoy();
 
-const chip = (clase, texto) => html`<span class="estado-chip ${clase}">${texto}</span>`;
+const chip = (clase, texto) => html`<span class="estado-chip ${clase}"><i class="punto"></i>${texto}</span>`;
 
 export function chipEntrega(estado) {
     switch (estado) {
@@ -127,6 +127,16 @@ const ICONOS = {
     ok: '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4 12 14.01l-3-3"/>',
     alerta: '<circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/>',
     capas: '<path d="m12 2 10 5-10 5L2 7z"/><path d="m2 17 10 5 10-5"/><path d="m2 12 10 5 10-5"/>',
+    upload: '<path d="M4 14.9A7 7 0 1 1 15.7 8h1.8a4.5 4.5 0 0 1 2.5 8.2"/><path d="M12 12v9"/><path d="m16 16-4-4-4 4"/>',
+    star: '<path d="m12 2 3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01z"/>',
+    calendar: '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
+    clock: '<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
+    file: '<path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/>',
+    download: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5M12 15V3"/>',
+    info: '<circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/>',
+    link: '<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>',
+    flecha: '<path d="M5 12h14M12 5l7 7-7 7"/>',
+    award: '<circle cx="12" cy="8" r="6"/><path d="M15.48 12.89 17 22l-5-3-5 3 1.52-9.11"/>',
     cerrar: '<path d="M18 6 6 18M6 6l12 12"/>',
 };
 export const icono = (nombre, clase = "icono") =>
@@ -136,3 +146,23 @@ export const icono = (nombre, clase = "icono") =>
 export const alerta = (tipo, texto) => html`<div class="alert ${tipo}" role="${tipo === "error" ? "alert" : "status"}">
     ${icono(tipo === "error" ? "alerta" : "ok")}<span>${texto}</span>
     <button type="button" class="alert-cerrar" data-cerrar-alerta aria-label="Cerrar">${icono("cerrar")}</button></div>`;
+
+/** dd/mm/aaaa a partir de "aaaa-mm-dd..." */
+export const fechaDMA = d => (d ? String(d).slice(0, 10).split("-").reverse().join("/") : "Sin fecha");
+
+/** Círculo de color con el ícono del tipo de actividad. */
+export const iconoTipo = t => html`<span class="tipo-circulo ${t === "examen" ? "tipo-examen" : "tipo-entrega"}"
+    title="${t === "examen" ? "Examen" : "Entrega"}">${icono(t === "examen" ? "star" : "upload")}</span>`;
+
+/** Celda de fecha límite: fecha arriba y hora de cierre abajo. */
+export const celdaFecha = d => d
+    ? html`<div class="celda-fecha"><strong>${icono("calendar")} ${fechaDMA(d)}</strong><small>${icono("clock")} 23:59</small></div>`
+    : html`<span class="muted">Sin fecha</span>`;
+
+/** Etiquetas debajo del título de una actividad: tipo y clase. */
+export const etiquetasActividad = a => html`<div class="act-etiquetas">
+    <span class="etq etq-tipo">${a.tipo === "examen" ? "Examen" : "Entrega"}</span>
+    <span class="etq etq-clase">${icono("class")} ${a.clase ? `Clase ${a.clase.orden}: ${a.clase.titulo}` : "Actividad general"}</span></div>`;
+
+/** Inicial grande para el bloque de color de un curso. */
+export const bloqueCurso = c => html`<div class="curso-bloque ${claseLenguaje(c.lenguaje)}"><span>${c.codigo}</span></div>`;

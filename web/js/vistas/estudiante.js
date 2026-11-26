@@ -1,7 +1,7 @@
 // Pantallas del ESTUDIANTE: inicio, matrícula, progreso, curso, actividad y examen.
 import { sb, q, rpc, ErrorFen, subirArchivo, descargar, EXT_ENTREGAS, ultimaPorActividad, resumen, aporte, requisito, mezclar } from "../api.js";
 import { html, raw, num, pct, fecha, fechaHora, vencida, chipEntrega, chipMatricula, chipTipo, tabs, panelTab,
-         enlaceExterno, exito, NOTICIAS, claseLenguaje } from "../ui.js";
+         enlaceExterno, exito, NOTICIAS, claseLenguaje, icono, iconoTipo, celdaFecha, etiquetasActividad, bloqueCurso, fechaDMA } from "../ui.js";
 
 const CURSO_COLS = "id, codigo, nombre, lenguaje, nivel, descripcion, profesor:perfiles!cursos_profesor_id_fkey(nombre)";
 
@@ -15,63 +15,70 @@ export async function inicio({ perfil }) {
     const matriculas = await misMatriculas(perfil.id);
     const cursando = matriculas.filter(m => m.estado === "Cursando").map(m => m.curso_id);
     const [actividades, entregas] = await Promise.all([
-        cursando.length ? q(sb.from("actividades").select("id, titulo, tipo, fecha_limite, curso:cursos(nombre)").in("curso_id", cursando)) : [],
+        cursando.length ? q(sb.from("actividades").select("id, titulo, tipo, fecha_limite, curso_id, curso:cursos(codigo, nombre)").in("curso_id", cursando)) : [],
         q(sb.from("entregas").select("actividad_id").eq("user_id", perfil.id)),
     ]);
     const hechas = new Set(entregas.map(x => x.actividad_id));
     const pendientes = actividades.filter(a => !hechas.has(a.id))
         .sort((a, b) => (a.fecha_limite ?? "9999").localeCompare(b.fecha_limite ?? "9999"));
+    const pendCurso = id => pendientes.filter(a => a.curso_id === id).length;
     const [cat, tit, txt] = NOTICIAS[Math.floor(Date.now() / 864e5) % NOTICIAS.length];
+    const nombre = (perfil.nombre || "").split(" ")[0];
 
     return {
         titulo: "Inicio",
         html: html`
-<section class="welcome-banner">
-    <div class="warning-icon">!</div>
-    <p>Hola <strong>${perfil.nombre}</strong>. Bienvenido a Fen Academy. Aquí verás tus cursos y tus actividades pendientes.</p>
+<section class="saludo">
+    <div>
+        <h1>Hola, ${nombre}</h1>
+        <p>${pendientes.length ? `Tenés ${pendientes.length} ${pendientes.length === 1 ? "actividad pendiente" : "actividades pendientes"}.` : "Estás al día con tus actividades."}</p>
+    </div>
+    <a href="#/matricula" class="admin-btn secundario">${icono("matricula")} Matrícula</a>
 </section>
 <section class="main-panels">
-    <div class="student-panel">
-        <div class="panel-title">Panel del estudiante</div>
-        <div class="hero-dashboard-card">
-            <div class="hero-dashboard-text">
-                <h1>Tu aula virtual está lista</h1>
-                <p>Revisá clases, entregá tus trabajos (archivo o repositorio de GitHub), rendí exámenes y seguí tus notas.</p>
-                <a href="#/matricula" class="hero-dashboard-badge">Ver matrícula</a>
-            </div>
+    <div class="tarjeta">
+        <div class="tarjeta-cabecera">
+            <span class="tarjeta-icono">${icono("class")}</span>
+            <div><h2>Mis cursos</h2><p>Tus cursos matriculados</p></div>
+            <span class="contador-pill">${matriculas.length} ${matriculas.length === 1 ? "curso" : "cursos"}</span>
         </div>
-        <div class="stats-grid">
-            <div class="stat-card"><span>Cursos</span><strong>${matriculas.length}</strong></div>
-            <div class="stat-card"><span>Actividades pendientes</span><strong>${pendientes.length}</strong></div>
-        </div>
-        <div class="quick-grid">
+        <div class="cursos-grid">
             ${matriculas.map(m => html`
-            <a href="#/curso/${m.curso_id}" class="course-link-card">
-                <div class="quick-card course-card">
-                    <div class="course-thumb ${claseLenguaje(m.curso.lenguaje)}"></div>
-                    <h3>${m.curso.codigo} · ${m.curso.nombre}</h3>
-                    <p><strong>Lenguaje:</strong> ${m.curso.lenguaje} · <strong>Nivel:</strong> ${m.curso.nivel}</p>
-                    <p>${m.curso.descripcion}</p>
-                    ${chipMatricula(m.estado)}
+            <a href="#/curso/${m.curso_id}" class="curso-card ${claseLenguaje(m.curso.lenguaje)}">
+                ${bloqueCurso(m.curso)}
+                <div class="curso-card-cuerpo">
+                    <div class="curso-card-titulo"><h3>${m.curso.nombre}</h3>${chipMatricula(m.estado)}</div>
+                    <p>${icono("user")} ${m.curso.profesor?.nombre ?? "Profesor por asignar"}</p>
+                    <p>${icono("capas")} ${m.curso.lenguaje} · Nivel ${m.curso.nivel}</p>
+                    <div class="curso-card-pie">
+                        ${pendCurso(m.curso_id) ? html`<span class="pill-pendiente">${icono("alerta")} ${pendCurso(m.curso_id)} ${pendCurso(m.curso_id) === 1 ? "pendiente" : "pendientes"}</span>` : html`<span></span>`}
+                        <span class="ingresar">Ingresar ${icono("flecha")}</span>
+                    </div>
                 </div>
             </a>`)}
-            ${matriculas.length ? "" : html`<div class="quick-card"><h3>Sin cursos todavía</h3>
-                <p>Entrá a <a class="activity-link" href="#/matricula">Matrícula</a> y elegí tu primer curso.</p></div>`}
+            ${matriculas.length ? "" : html`<div class="vacio">${icono("class")}<h3>Sin cursos todavía</h3>
+                <p>Entrá a <a href="#/matricula">Matrícula</a> y elegí tu primer curso.</p></div>`}
         </div>
     </div>
-    <aside class="bulletin-panel">
-        <div class="panel-title">Por entregar</div>
-        <div class="pending-list">
-            ${pendientes.slice(0, 6).map(a => html`
-            <a class="pending-item" href="#/actividad/${a.id}">
-                <strong>${a.titulo} ${chipTipo(a.tipo)}</strong>
-                <span>${a.curso.nombre}</span>
-                <small class="${vencida(a.fecha_limite) ? "texto-alerta" : ""}">${a.fecha_limite ? "Vence " + fecha(a.fecha_limite) : "Sin fecha límite"}</small>
-            </a>`)}
-            ${pendientes.length ? "" : html`<p class="muted">¡Estás al día! No tenés actividades pendientes.</p>`}
+    <aside class="columna-lateral">
+        <div class="tarjeta">
+            <div class="tarjeta-cabecera">
+                <span class="tarjeta-icono naranja">${icono("inbox")}</span>
+                <div><h2>Por entregar</h2><p>Ordenadas por fecha</p></div>
+            </div>
+            <div class="pendientes-lista">
+                ${pendientes.slice(0, 6).map(a => html`
+                <a class="pendiente-fila" href="#/actividad/${a.id}">
+                    ${iconoTipo(a.tipo)}
+                    <div><strong>${a.titulo}</strong><small>${a.curso.codigo} · ${a.curso.nombre}</small></div>
+                    <span class="pendiente-fecha ${vencida(a.fecha_limite) ? "vencida" : ""}">${a.fecha_limite ? fechaDMA(a.fecha_limite) : "Sin fecha"}</span>
+                </a>`)}
+                ${pendientes.length ? "" : html`<div class="vacio chico">${icono("ok")}<p>¡Estás al día!</p></div>`}
+            </div>
         </div>
-        <div class="panel-title">Noticias tech</div>
-        <div class="tech-news-card"><span>${cat}</span><h3>${tit}</h3><p>${txt}</p></div>
+        <div class="tarjeta noticia">
+            <span class="noticia-cat">${cat}</span><h3>${tit}</h3><p>${txt}</p>
+        </div>
     </aside>
 </section>`,
     };
@@ -211,7 +218,8 @@ ${tabs([{ id: "clases", texto: "Clases", icono: "class" }, { id: "evaluacion", t
                 <h3>Clase ${cl.orden}: ${cl.titulo}</h3>
                 <p>${cl.descripcion}</p>
                 ${actividades.filter(a => a.clase_id === cl.id).map(a => html`
-                <a class="clase-tarea" href="#/actividad/${a.id}">${a.tipo === "examen" ? "🧪" : "📝"} ${a.titulo} · ${pct(a.valor)} ${chipEntrega(ultimas.get(a.id)?.estado)}</a>`)}
+                <a class="clase-tarea" href="#/actividad/${a.id}">${iconoTipo(a.tipo)}<span class="clase-tarea-titulo">${a.titulo}</span>
+                    <span class="valor-pill">${pct(a.valor)}</span>${chipEntrega(ultimas.get(a.id)?.estado)}</a>`)}
             </div>`)}
             ${clases.length ? "" : html`<div class="course-item"><h3>Sin clases</h3><p>Tu profesor todavía no publicó clases.</p></div>`}
         </div>
@@ -221,25 +229,30 @@ ${tabs([{ id: "clases", texto: "Clases", icono: "class" }, { id: "evaluacion", t
 <div ${raw(panelTab("evaluacion", tab))}>
     <div class="course-panel">
         <div class="panel-title">Evaluación</div>
-        <div class="evaluation-wrapper compact-evaluation-wrapper">
-            <table class="evaluation-table compact-evaluation-table">
-                <thead><tr><th>Actividad</th><th>Tipo</th><th>Fecha límite</th><th>Estado</th><th>Valor</th><th>Nota</th><th>Aporte</th></tr></thead>
+        <div class="act-tabla-wrap">
+            <table class="act-tabla">
+                <thead><tr><th class="col-tipo">Tipo</th><th>Actividad</th><th class="centro">Fecha límite</th><th class="centro">Estado</th><th class="centro">Valor</th><th class="centro">Calificación</th></tr></thead>
                 <tbody>
                     ${actividades.map(a => {
                         const en = ultimas.get(a.id);
+                        const calif = en?.nota != null
+                            ? html`<span class="calif-ok">${pct(aporte(a, en))}</span><small>${num(en.nota)}/100</small>`
+                            : en ? html`<span class="muted">Sin revisar</span>` : html`<span class="muted">—</span>`;
                         return html`<tr class="click-row" data-href="#/actividad/${a.id}">
-                            <td><strong>${a.titulo}</strong><p>${a.clase ? `Clase ${a.clase.orden}: ${a.clase.titulo}` : "Actividad general"}</p></td>
-                            <td>${chipTipo(a.tipo)}</td><td>${fecha(a.fecha_limite)}</td><td>${chipEntrega(en?.estado)}</td>
-                            <td>${pct(a.valor)}</td>
-                            <td><span class="grade-chip">${en?.nota == null ? "—" : num(en.nota) + "/100"}</span></td>
-                            <td>${num(aporte(a, en))}</td></tr>`;
+                            <td class="col-tipo">${iconoTipo(a.tipo)}</td>
+                            <td><strong class="act-titulo">${a.titulo}</strong>${etiquetasActividad(a)}</td>
+                            <td class="centro">${celdaFecha(a.fecha_limite)}</td>
+                            <td class="centro">${chipEntrega(en?.estado)}</td>
+                            <td class="centro"><span class="valor-pill">${pct(a.valor)}</span></td>
+                            <td class="centro"><div class="celda-calif">${calif}</div></td></tr>`;
                     })}
-                    ${actividades.length ? "" : html`<tr><td colspan="7">No hay actividades registradas.</td></tr>`}
-                    <tr class="evaluation-total-row">
-                        <td colspan="4">Nota acumulada (evaluado ${pct(r.evaluado)} de ${pct(r.total)})</td>
-                        <td>${pct(r.total)}</td><td colspan="2"><strong>${num(r.nota)}/100</strong></td>
-                    </tr>
+                    ${actividades.length ? "" : html`<tr><td colspan="6" class="vacio-celda">Tu profesor todavía no publicó actividades.</td></tr>`}
                 </tbody>
+                <tfoot><tr>
+                    <td colspan="4">Nota acumulada <small class="muted">· evaluado ${pct(r.evaluado)} de ${pct(r.total)}</small></td>
+                    <td class="centro"><span class="valor-pill">${pct(r.total)}</span></td>
+                    <td class="centro"><strong class="nota-total">${num(r.nota)}/100</strong></td>
+                </tr></tfoot>
             </table>
         </div>
     </div>
@@ -299,26 +312,35 @@ export async function actividad({ perfil, params }) {
         }
     }
 
+    const campo = (ic, etiqueta, valor) => html`<div class="det-campo"><span class="det-etiqueta">${icono(ic)} ${etiqueta}</span><div>${valor}</div></div>`;
     const info = html`
-    <section class="activity-info">
-        <h1>Datos generales</h1>
-        <label>${esExamen ? "Examen" : "Actividad"}</label><input value="${a.titulo}" readonly>
-        <label>Curso</label><input value="${a.curso.codigo} · ${a.curso.nombre}" readonly>
-        <label>Clase</label><input value="${a.clase?.titulo ?? "Actividad general"}" readonly>
-        <label>Fecha límite</label><input value="${fecha(a.fecha_limite)}${vence ? " (vencida)" : ""}" readonly>
-        <label>Valor en la nota final</label><input value="${pct(a.valor)}" readonly>
+    <aside class="tarjeta det-panel">
+        <div class="tarjeta-cabecera">
+            <span class="tarjeta-icono">${icono("info")}</span><div><h2>Detalles</h2></div>
+            <span class="contador-pill ${esExamen ? "amarillo" : "azul"}">${esExamen ? "Examen" : "Entrega de archivo"}</span>
+        </div>
+        ${campo("calendar", "Fecha límite", html`<strong class="${vence ? "texto-rojo" : ""}">${a.fecha_limite ? fechaDMA(a.fecha_limite) + " 23:59" : "Sin fecha límite"}</strong>${vence ? html` <span class="etq etq-rojo">Vencida</span>` : ""}`)}
+        ${campo("class", "Curso", html`<a class="etq etq-clase" href="#/curso/${a.curso_id}">${a.curso.codigo} · ${a.curso.nombre}</a>`)}
+        ${campo("folder", "Clase", html`<span class="etq etq-clase">${a.clase?.titulo ?? "Actividad general"}</span>`)}
+        ${campo("chart", "Valor en la nota final", html`<span class="valor-pill">${pct(a.valor)}</span>`)}
         ${esExamen ? html`
-        <label>Preguntas</label><input value="${estadoEx.preguntas} preguntas · ${num(estadoEx.puntos)} puntos" readonly>
-        <label>Duración</label><input value="${a.duracion_minutos ? a.duracion_minutos + " minutos" : "Sin límite de tiempo"}" readonly>` : ""}
-        <label>Consigna</label><textarea readonly>${a.descripcion}</textarea>
-    </section>`;
+        ${campo("eval", "Preguntas", html`${estadoEx.preguntas} preguntas · ${num(estadoEx.puntos)} puntos`)}
+        ${campo("clock", "Duración", a.duracion_minutos ? a.duracion_minutos + " minutos" : "Sin límite de tiempo")}` : ""}
+        ${campo("file", "Instrucciones", html`<div class="det-consigna">${a.descripcion || "Sin instrucciones."}</div>`)}
+    </aside>`;
 
     return {
         titulo: a.titulo, seccion: esExamen ? "Examen" : "Actividad",
         volver: [`curso/${a.curso_id}?tab=evaluacion`, "Volver al curso"],
-        html: html`<div class="activity-layout">${info}
-            <section class="activity-submit">${esExamen ? panelExamen(a, estadoEx, entregas[0], solucion, respuestas)
-                : panelEntrega(a, mat, entregas, vence)}</section></div>`,
+        html: html`
+<div class="act-encabezado">
+    ${iconoTipo(a.tipo)}
+    <div><h1>${a.titulo}</h1><p>${a.curso.codigo} · ${a.curso.nombre}</p></div>
+</div>
+<div class="act-detalle">${info}
+    <section class="act-principal">${esExamen ? panelExamen(a, estadoEx, entregas[0], solucion, respuestas)
+        : panelEntrega(a, mat, entregas, vence)}</section>
+</div>`,
         acciones: {
             async comenzar() {
                 await rpc("comenzar_examen", { p_actividad: id });
@@ -343,30 +365,30 @@ function panelExamen(a, est, resultado, solucion, respuestas) {
     if (resultado) {
         const porPregunta = new Map(respuestas.map(r => [r.pregunta_id, r]));
         return html`
-        <h1>Tu examen</h1>
-        <div class="review-box">
-            <h3>Resultado</h3>
-            <p class="nota-grande">${num(resultado.nota)}/100</p>
-            <p>Enviado: ${fechaHora(resultado.fecha_entrega)} ${resultado.fuera_de_tiempo ? "(fuera de tiempo)" : ""}</p>
-            ${resultado.comentario ? html`<p>${resultado.comentario}</p>` : ""}
-            ${resultado.retroalimentacion ? html`<div class="feedback-box"><strong>Comentario del profesor:</strong> ${resultado.retroalimentacion}</div>` : ""}
-        </div>
-        ${solucion?.length ? html`<h2>Corrección</h2>${solucion.map(p => preguntaCorregida(p, porPregunta.get(p.id)))}`
-            : a.mostrar_solucion ? "" : html`<p class="muted">Tu profesor no habilitó la vista de la corrección para este examen.</p>`}`;
+        ${bannerNota(a, resultado)}
+        <div class="tarjeta">
+            <div class="tarjeta-cabecera">
+                <span class="tarjeta-icono amarillo">${icono("star")}</span>
+                <div><h2>Tu examen</h2><p>Enviado el ${fechaHora(resultado.fecha_entrega)} ${resultado.fuera_de_tiempo ? "· fuera de tiempo" : ""}</p></div>
+            </div>
+            ${solucion?.length ? html`<div class="correccion">${solucion.map(p => preguntaCorregida(p, porPregunta.get(p.id)))}</div>`
+                : a.mostrar_solucion ? "" : html`<div class="vacio chico">${icono("info")}<p>Tu profesor no habilitó la vista de la corrección para este examen.</p></div>`}
+        </div>`;
     }
     if (est.puede_rendir) {
         return html`
-        <h1>Tu examen</h1>
-        <div class="review-box">
-            <h3>${est.iniciado ? "Examen en curso" : "Listo para empezar"}</h3>
-            <p>Tenés <strong>un solo intento</strong>.
-               ${a.duracion_minutos ? html`Al comenzar corre un reloj de <strong>${a.duracion_minutos} minutos</strong>; si se acaba, el examen se envía solo.` : ""}</p>
-        </div>
-        ${est.iniciado
-            ? html`<div class="upload-box"><a class="admin-btn" href="#/examen/${a.id}">Continuar examen</a></div>`
-            : html`<div class="upload-box"><button type="button" data-accion="comenzar" data-confirm="¿Comenzar el examen ahora? Solo tenés un intento." data-boton="Comenzar">Comenzar examen</button></div>`}`;
+        <div class="tarjeta">
+            <div class="tarjeta-cabecera">
+                <span class="tarjeta-icono amarillo">${icono("star")}</span>
+                <div><h2>${est.iniciado ? "Examen en curso" : "Listo para empezar"}</h2><p>Tenés un solo intento</p></div>
+            </div>
+            <p class="tarjeta-texto">${a.duracion_minutos ? html`Al comenzar corre un reloj de <strong>${a.duracion_minutos} minutos</strong>; si se acaba, el examen se envía solo.` : "Este examen no tiene límite de tiempo."}</p>
+            <div class="tarjeta-acciones">${est.iniciado
+                ? html`<a class="admin-btn" href="#/examen/${a.id}">Continuar examen ${icono("flecha")}</a>`
+                : html`<button type="button" class="admin-btn" data-accion="comenzar" data-confirm="¿Comenzar el examen ahora? Solo tenés un intento." data-boton="Comenzar">Comenzar examen ${icono("flecha")}</button>`}</div>
+        </div>`;
     }
-    return html`<h1>Tu examen</h1><div class="review-box"><h3>Examen no disponible</h3><p>${est.motivo}</p></div>`;
+    return html`<div class="tarjeta"><div class="vacio chico">${icono("alerta")}<h3>Examen no disponible</h3><p>${est.motivo}</p></div></div>`;
 }
 
 /** Pregunta con la corrección (la usa también el profesor). */
@@ -386,44 +408,75 @@ export function preguntaCorregida(p, r, extra = "") {
         ${opciones}${extra}</div>`;
 }
 
+/** Banner de calificación (entrega o examen ya revisados). */
+function bannerNota(a, en) {
+    if (en?.nota == null) return "";
+    return html`
+    <div class="banner-nota">
+        <div>
+            <h2>${icono("ok")} Calificación y retroalimentación</h2>
+            <p>${chipEntrega(en.estado)} <span>Nota ${num(en.nota)}/100</span></p>
+        </div>
+        <div class="banner-nota-valor"><strong>${num(aporte(a, en))}</strong><span>/ ${pct(a.valor)}</span></div>
+    </div>
+    ${en.retroalimentacion ? html`<div class="retro-box"><span class="det-etiqueta">${icono("info")} Comentario del profesor</span><p>${en.retroalimentacion}</p></div>` : ""}`;
+}
+
 function panelEntrega(a, mat, entregas, vence) {
     const ultima = entregas[0];
     const puede = mat?.estado === "Cursando" && ultima?.estado !== "Aprobado";
     return html`
-    <h1>Tu entrega</h1>
-    ${puede ? html`
-    <div class="review-box">
-        <h3>${entregas.length ? "Volver a entregar" : "Entregar"}</h3>
-        <p>Subí un archivo (${EXT_ENTREGAS.join(", ")} · máx. 16 MB) y/o pegá el enlace a tu repositorio de GitHub.
-           ${vence ? html`<br><strong class="texto-alerta">La fecha límite ya pasó: tu entrega quedará marcada como tardía.</strong>` : ""}
-           ${entregas.length ? html`<br>Tu profesor calificará la última entrega.` : ""}</p>
-    </div>
-    <form data-accion="entregar" class="upload-box">
-        <label>Archivo</label>
-        <input type="file" name="archivo" accept="${EXT_ENTREGAS.map(x => "." + x).join(",")}">
-        <label>Enlace al repositorio (opcional)</label>
-        <input type="url" name="enlace" placeholder="https://github.com/tu-usuario/tu-proyecto">
-        <label>Comentario para el profesor</label>
-        <textarea name="comentario" placeholder="Opcional"></textarea>
-        <button type="submit">Entregar actividad</button>
-    </form>` : html`
-    <div class="review-box"><h3>Entrega cerrada</h3>
-        <p>${ultima?.estado === "Aprobado" ? "Tu entrega fue aprobada." : "El curso ya fue cerrado por tu profesor."}</p></div>`}
-
-    <h2>Entregas realizadas</h2>
-    ${entregas.map(en => html`
-    <div class="delivery-card">
-        <div>
-            ${en.nombre_original ? html`<strong>${en.nombre_original}</strong>` : ""}
-            ${en.enlace ? html`<p>${enlaceExterno(en.enlace)}</p>` : ""}
-            <p>Entregado: ${fechaHora(en.fecha_entrega)} ${en.fuera_de_tiempo ? html`<span class="texto-alerta">(tardía)</span>` : ""}</p>
-            ${en.comentario ? html`<p>Tu comentario: ${en.comentario}</p>` : ""}
-            <p>${chipEntrega(en.estado)} ${en.nota != null ? html`<span class="grade-chip">Nota: ${num(en.nota)}/100</span>` : ""}</p>
-            ${en.retroalimentacion ? html`<div class="feedback-box"><strong>Retroalimentación:</strong> ${en.retroalimentacion}</div>` : ""}
+    ${bannerNota(a, ultima)}
+    <div class="tarjeta">
+        <div class="tarjeta-cabecera">
+            <span class="tarjeta-icono">${icono("upload")}</span>
+            <div><h2>Tu entrega</h2><p>${entregas.length ? `${entregas.length} ${entregas.length === 1 ? "envío" : "envíos"} · se califica el último` : "Todavía no entregaste"}</p></div>
         </div>
-        ${en.archivo_path ? html`<button type="button" class="activity-link" data-accion="descargar" data-ruta="${en.archivo_path}" data-nombre="${en.nombre_original}">Descargar</button>` : ""}
-    </div>`)}
-    ${entregas.length ? "" : html`<div class="empty-delivery">Todavía no entregaste esta actividad.</div>`}`;
+        <div class="entregas-lista">
+            ${entregas.map((en, i) => html`
+            <div class="entrega-item ${i ? "anterior" : ""}">
+                <div class="entrega-cab">
+                    <span class="entrega-estado-ic ${en.nota != null ? "ok" : ""}">${icono(en.nota != null ? "ok" : "clock")}</span>
+                    <div><strong>${i ? "Envío anterior" : en.nota != null ? "Entrega calificada" : "Entrega enviada"}</strong>
+                        <small>Enviado el ${fechaHora(en.fecha_entrega)} ${en.fuera_de_tiempo ? html`<span class="texto-rojo">· tardía</span>` : ""}</small></div>
+                    ${chipEntrega(en.estado)}
+                </div>
+                ${en.nombre_original ? html`
+                <div class="archivo-fila">
+                    <span class="archivo-ic">${icono("file")}</span>
+                    <div><strong>${en.nombre_original}</strong><small>Archivo entregado</small></div>
+                    ${en.archivo_path ? html`<button type="button" class="admin-btn secundario" data-accion="descargar" data-ruta="${en.archivo_path}" data-nombre="${en.nombre_original}">${icono("download")} Descargar</button>` : ""}
+                </div>` : ""}
+                ${en.enlace ? html`<div class="archivo-fila"><span class="archivo-ic">${icono("link")}</span><div>${enlaceExterno(en.enlace)}<small>Repositorio</small></div></div>` : ""}
+                ${en.comentario ? html`<p class="entrega-comentario">Tu comentario: ${en.comentario}</p>` : ""}
+                ${en.nota != null && i === 0 ? html`<div class="nota-asignada"><div><span class="det-etiqueta">Nota asignada</span>
+                    <strong>${num(en.nota)} <small>/ 100</small></strong></div>${icono("award")}</div>` : ""}
+            </div>`)}
+            ${entregas.length ? "" : html`<div class="vacio chico">${icono("inbox")}<p>Todavía no entregaste esta actividad.</p></div>`}
+        </div>
+    </div>
+    ${puede ? html`
+    <div class="tarjeta">
+        <div class="tarjeta-cabecera">
+            <span class="tarjeta-icono naranja">${icono("upload")}</span>
+            <div><h2>${entregas.length ? "Volver a entregar" : "Entregar"}</h2>
+                <p>Archivo (${EXT_ENTREGAS.join(", ")} · máx. 16 MB) y/o enlace a GitHub</p></div>
+        </div>
+        ${vence ? html`<div class="aviso-rojo">${icono("alerta")} La fecha límite ya pasó: tu entrega quedará marcada como tardía.</div>` : ""}
+        <form data-accion="entregar" class="form-limpio">
+            <label class="zona-archivo">
+                ${icono("upload")}<span><strong>Elegí un archivo</strong> para subir</span>
+                <input type="file" name="archivo" accept="${EXT_ENTREGAS.map(x => "." + x).join(",")}">
+                <small class="zona-nombre">Ningún archivo seleccionado</small>
+            </label>
+            <label>Enlace al repositorio (opcional)</label>
+            <input type="url" name="enlace" placeholder="https://github.com/tu-usuario/tu-proyecto">
+            <label>Comentario para el profesor</label>
+            <textarea name="comentario" placeholder="Opcional"></textarea>
+            <button type="submit" class="admin-btn">${icono("upload")} Entregar actividad</button>
+        </form>
+    </div>` : html`
+    <div class="tarjeta"><div class="vacio chico">${icono("shield")}<p>${ultima?.estado === "Aprobado" ? "Tu entrega fue aprobada. La entrega está cerrada." : "El curso ya fue cerrado por tu profesor."}</p></div></div>`}`;
 }
 
 // ----------------------------------------------------------- rendir examen ---
