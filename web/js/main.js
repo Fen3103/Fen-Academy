@@ -145,7 +145,6 @@ function layout(rutaActual, vista) {
             <div class="topbar-right">
                 ${vista.volver ? html`<a href="#/${vista.volver[0]}" class="topbar-link" aria-label="${vista.volver[1]}">←<span> ${vista.volver[1]}</span></a>` : ""}
                 <button type="button" class="tema-toggle" data-alternar-tema aria-label="Cambiar tema claro u oscuro" title="Cambiar tema">${icono("sun")}${icono("moon")}</button>
-                <strong class="topbar-nombre">${perfil.nombre}</strong>
                 <a href="#/perfil" class="topbar-avatar" aria-label="Perfil">${inicial}</a>
             </div>
         </header>
