@@ -1,4 +1,4 @@
-# Compila y ejecuta las pruebas en cada push y pull request.
+# Pruebas en cada push y pull request: reglas de seguridad de la base y sintaxis de la página.
 name: CI
 
 on:
@@ -7,13 +7,15 @@ on:
   pull_request:
 
 jobs:
-  build-test:
+  pruebas:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-node@v4
         with:
-          dotnet-version: 10.0.x
-      - run: dotnet restore
-      - run: dotnet build --no-restore --configuration Release
-      - run: dotnet test --no-build --configuration Release --verbosity normal
+          node-version: 22
+      - name: Pruebas de la base (RLS, matrícula, exámenes, archivos)
+        working-directory: supabase/pruebas
+        run: npm install && npm test
+      - name: Sintaxis de la página
+        run: for f in web/js/*.js web/js/vistas/*.js; do node --check "$f"; done

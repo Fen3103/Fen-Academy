@@ -1,0 +1,7 @@
+{
+  "name": "fen-academy-pruebas-sql",
+  "private": true,
+  "type": "module",
+  "scripts": { "test": "node test.mjs" },
+  "devDependencies": { "@electric-sql/pglite": "0.2.17" }
+}
