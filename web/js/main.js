@@ -12,6 +12,8 @@ import * as est from "./vistas/estudiante.js";
 import * as prof from "./vistas/profesor.js";
 import * as adm from "./vistas/admin.js";
 import * as cuenta from "./vistas/cuenta.js";
+import * as cal from "./vistas/calendario.js";
+import { renderMarkdown, copiarCodigo } from "./md.js";
 
 const app = document.getElementById("app");
 const E = "estudiante", P = "profesor", A = "admin";
@@ -22,16 +24,19 @@ const RUTAS = [
     ["matricula", est.matricula, [E]],
     ["progreso", est.progreso, [E]],
     ["curso/:id", est.curso, [E]],
+    ["certificado/:id", est.certificado, [E]],
     ["actividad/:id", est.actividad, [E]],
     ["examen/:id", est.rendir, [E]],
     ["docente", prof.inicio, [P, A]],
     ["catalogo", prof.catalogo, [P]],
     ["docente/curso/:id", prof.curso, [P, A]],
     ["docente/actividad/:id", prof.actividad, [P, A]],
+    ["docente/calificar/:id", prof.calificar, [P, A]],
     ["docente/examen/:id", prof.examen, [P, A]],
     ["docente/revisar/:id", prof.revisar, [P, A]],
     ["admin", adm.inicio, [A]],
     ["admin/curso/:id", adm.editarCurso, [A]],
+    ["calendario", cal.calendario, [E, P, A]],
     ["perfil", cuenta.perfil, [E, P, A]],
     ["ajustes", cuenta.ajustes, [E, P, A]],
 ];
@@ -76,16 +81,16 @@ async function cargarPerfil() {
 
 function menu(rutaActual) {
     const items = {
-        estudiante: [["inicio", "Inicio"], ["matricula", "Matrícula"], ["progreso", "Progreso"]],
-        profesor: [["docente", "Mis cursos"], ["catalogo", "Cursos para impartir"]],
+        estudiante: [["inicio", "Inicio"], ["matricula", "Matrícula"], ["progreso", "Progreso"], ["calendario", "Calendario"]],
+        profesor: [["docente", "Mis cursos"], ["catalogo", "Cursos para impartir"], ["calendario", "Calendario"]],
         admin: [["admin", "Administración"], ["docente", "Panel docente"]],
     }[perfil.rol];
     const activo = r => {
         const raiz = rutaActual.split("/")[0];
-        if (r === "progreso") return ["progreso", "curso", "actividad", "examen"].includes(raiz);
+        if (r === "progreso") return ["progreso", "curso", "actividad", "examen", "certificado"].includes(raiz);
         return raiz === r;
     };
-    const ICONO = { inicio: "home", matricula: "matricula", progreso: "chart", docente: "class", catalogo: "capas", admin: "shield", perfil: "user", ajustes: "sun" };
+    const ICONO = { inicio: "home", matricula: "matricula", progreso: "chart", docente: "class", catalogo: "capas", calendario: "calendar", admin: "shield", perfil: "user", ajustes: "sun" };
     return [...items, ["perfil", "Perfil"], ["ajustes", "Ajustes"]]
         .map(([r, t]) => html`<a href="#/${r}" class="nav-item ${activo(r) ? "active" : ""}">${icono(ICONO[r])}<span>${t}</span></a>`);
 }
@@ -109,10 +114,11 @@ function layout(rutaActual, vista) {
         </div>
         <button type="button" class="logout-link" data-salir>${icono("logout")}<span>Cerrar sesión</span></button>
     </aside>
+    <div class="sidebar-fondo" data-cerrar-menu></div>
     <main class="dashboard-main">
         <header class="topbar">
             <div class="topbar-left">
-                <button class="menu-toggle" type="button" data-toggle-sidebar>☰</button>
+                <button class="menu-toggle" type="button" data-toggle-sidebar aria-label="Abrir menú">☰</button>
                 <span>${vista.seccion || vista.titulo}</span>
             </div>
             <div class="topbar-right">
@@ -179,6 +185,7 @@ export async function dibujar({ silencioso = false } = {}) {
     document.title = `${vista.titulo || "Inicio"} | Fen Academy`;
     app.innerHTML = vista.auth || !perfil || modoRecuperacion || !configurado ? layoutAuth(vista) : layout(ruta, vista);
     vista.alMontar?.(app, ctx);
+    renderMarkdown(app);
     if (silencioso) window.scrollTo(0, scroll);
     else window.scrollTo(0, 0);
     // Los avisos de éxito se van solos.
@@ -269,9 +276,17 @@ document.addEventListener("click", ev => {
     if (boton && !boton.form) {
         return confirmarSiHace(boton).then(ok => ok && ejecutar(boton.dataset.accion, boton, { ...boton.dataset }));
     }
+    if (ev.target.closest("[data-imprimir]")) return window.print();
+    const copiar = ev.target.closest("[data-copiar]");
+    if (copiar) return copiarCodigo(copiar);
     const cerrarA = ev.target.closest("[data-cerrar-alerta]");
     if (cerrarA) return cerrarAlerta(cerrarA.closest(".alert"));
-    if (ev.target.closest("[data-toggle-sidebar]")) document.querySelector(".sidebar")?.classList.toggle("collapsed");
+    if (ev.target.closest("[data-toggle-sidebar]")) {
+        // En celular el menú se abre como cajón; en escritorio se colapsa.
+        if (window.innerWidth <= 850) document.body.classList.toggle("menu-abierto");
+        else document.querySelector(".sidebar")?.classList.toggle("collapsed");
+    }
+    if (ev.target.closest("[data-cerrar-menu]") || ev.target.closest(".sidebar a")) document.body.classList.remove("menu-abierto");
     const toggle = ev.target.closest("[data-toggle]");
     if (toggle) document.getElementById(toggle.dataset.toggle)?.classList.toggle("open");
     if (ev.target.closest("[data-salir]")) sb.auth.signOut();

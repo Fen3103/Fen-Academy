@@ -83,10 +83,35 @@ check(await err(profe, `select guardar_pregunta($1,'¿2+2?','opcion_unica',1,arr
 check(await err(ana, `select guardar_pregunta($1,'x','respuesta_corta',1,null,null,'x')`, [borr]), 'estudiante no crea preguntas');
 check(await err(profe, `update actividades set publicada=true where id=$1`, [borr]) === null, 'publica examen con preguntas');
 
+// Editar y reordenar preguntas (antes de que alguien empiece)
+await as(profe, `select guardar_pregunta($1,'¿Capital?','respuesta_corta',2,null,null,'San José')`, [borr]);
+const pregs = async () => (await db.query(`select id, orden, enunciado, tipo, puntos from preguntas where actividad_id=$1 order by orden`, [borr])).rows;
+const [p1, p2] = await pregs();
+check(await err(profe, `select editar_pregunta($1,'¿3+3?','opcion_unica',3,array['5','6','7'],1,null)`, [p1.id]) === null, 'editar_pregunta ok');
+const p1e = (await pregs())[0];
+check(p1e.enunciado === '¿3+3?' && Number(p1e.puntos) === 3 && p1e.orden === p1.orden, 'pregunta editada conserva su lugar');
+const clave = (await db.query(`select o.texto from claves k join opciones o on o.id=k.opcion_correcta_id where k.pregunta_id=$1`, [p1.id])).rows[0];
+check(clave?.texto === '6', 'opción correcta nueva: ' + clave?.texto);
+check((await db.query(`select count(*)::int n from opciones where pregunta_id=$1`, [p1.id])).rows[0].n === 3, 'opciones reemplazadas');
+check(await err(ana, `select editar_pregunta($1,'x','respuesta_corta',1,null,null,'x')`, [p1.id]), 'estudiante no edita preguntas');
+await as(profe, `select mover_pregunta($1, 1)`, [p1.id]);
+const orden2 = await pregs();
+check(orden2[0].id === p2.id && orden2[1].id === p1.id, 'mover_pregunta baja la primera');
+await as(profe, `select mover_pregunta($1, 1)`, [p1.id]);
+check((await pregs())[1].id === p1.id, 'mover al final no hace nada');
+
+// Anuncios
+check(await err(profe, `insert into anuncios (curso_id, titulo, texto) values ($1,'Bienvenidos','Hola')`, [py1]) === null, 'profe publica anuncio');
+check(await err(profe, `insert into anuncios (curso_id, titulo) values ($1,'x')`, [py3]), 'profe no anuncia en curso ajeno');
+check(await err(ana, `insert into anuncios (curso_id, titulo) values ($1,'x')`, [py1]), 'estudiante no publica anuncios');
+check((await as(ana, `select * from anuncios`)).length === 1, 'matriculada ve el anuncio');
+check((await as(luis, `select * from anuncios`)).length === 0, 'no matriculado no ve anuncios');
+check((await as(ana, `select creada from actividades limit 1`))[0].creada, 'actividades tienen fecha de creación');
+
 // Claves y preguntas ocultas
 check((await as(ana, `select * from preguntas`)).length === 0, 'estudiante no ve preguntas');
 check((await as(ana, `select * from claves`)).length === 0, 'estudiante no ve claves');
-check((await as(profe, `select * from claves`)).length === 5, 'profe ve claves');
+check((await as(profe, `select * from claves`)).length === 6, 'profe ve claves');
 check(await err(ana, `select preguntas_examen($1)`, [examen]), 'preguntas_examen requiere intento');
 check((await as(ana, `select solucion_examen($1) s`, [examen]))[0].s === null, 'sin solución antes de rendir');
 
@@ -103,6 +128,7 @@ check((await db.query(`select nota from entregas where id=$1`, [eid])).rows[0].n
 check(await err(ana, `insert into entregas (actividad_id,user_id) values ($1,auth.uid())`, [entrega1]), 'insert directo de entrega bloqueado');
 await as(profe, `update entregas set nota=90, estado='Aprobado', retroalimentacion='Bien' where id=$1`, [eid]);
 check((await db.query(`select nota from entregas where id=$1`, [eid])).rows[0].nota == 90, 'profe califica');
+check((await db.query(`select fecha_revision from entregas where id=$1`, [eid])).rows[0].fecha_revision, 'calificar marca fecha_revision');
 check((await err(ana, `select entregar_trabajo($1,null,null,'https://github.com/a/b',null)`, [entrega1]))?.includes('aprobada'), 'no reentrega aprobada');
 check((await as(luis, `select * from entregas`)).length === 0, 'luis no ve entregas ajenas');
 

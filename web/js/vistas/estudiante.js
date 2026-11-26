@@ -3,6 +3,8 @@ import { sb, q, rpc, ErrorFen, subirArchivo, descargar, EXT_ENTREGAS, ultimaPorA
 import { html, raw, num, pct, fecha, fechaHora, vencida, chipEntrega, chipMatricula, chipTipo, tabs, panelTab,
          enlaceExterno, exito, NOTICIAS, claseLenguaje, icono, iconoTipo, celdaFecha, etiquetasActividad, bloqueCurso, fechaDMA, compararLenguajes } from "../ui.js";
 
+const MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
+
 const CURSO_COLS = "id, codigo, nombre, lenguaje, nivel, descripcion, profesor:perfiles!cursos_profesor_id_fkey(nombre)";
 
 async function misMatriculas(uid) {
@@ -19,6 +21,21 @@ export async function inicio({ perfil }) {
         q(sb.from("entregas").select("actividad_id").eq("user_id", perfil.id)),
     ]);
     const hechas = new Set(entregas.map(x => x.actividad_id));
+    // Novedades de las últimas 2 semanas (si la migración de mejoras no está, simplemente no hay).
+    const hace = d => Date.now() - new Date(d) < 14 * 864e5;
+    const [nAnuncios, nActividades, nNotas] = await Promise.all([
+        cursando.length ? q(sb.from("anuncios").select("id, titulo, fecha, curso_id, curso:cursos(codigo)").in("curso_id", cursando)).catch(() => []) : [],
+        cursando.length ? q(sb.from("actividades").select("id, titulo, tipo, creada, curso:cursos(codigo)").in("curso_id", cursando)).catch(() => []) : [],
+        q(sb.from("entregas").select("id, actividad_id, nota, estado, fecha_revision, actividad:actividades(titulo)").eq("user_id", perfil.id)).catch(() => []),
+    ]);
+    const novedades = [
+        ...nAnuncios.filter(x => hace(x.fecha)).map(x => ({ fecha: x.fecha, icono: "megafono", clase: "naranja", texto: x.titulo,
+            sub: `Anuncio · ${x.curso.codigo}`, href: `#/curso/${x.curso_id}?tab=anuncios` })),
+        ...nActividades.filter(x => x.creada && hace(x.creada)).map(x => ({ fecha: x.creada, icono: x.tipo === "examen" ? "star" : "upload", clase: "amarillo",
+            texto: x.titulo, sub: `Nueva ${x.tipo === "examen" ? "evaluación" : "tarea"} · ${x.curso.codigo}`, href: `#/actividad/${x.id}` })),
+        ...nNotas.filter(x => x.fecha_revision && hace(x.fecha_revision)).map(x => ({ fecha: x.fecha_revision, icono: "award", clase: "",
+            texto: x.actividad?.titulo, sub: x.nota != null ? `Calificada: ${num(x.nota)}/100` : `Revisada: ${x.estado}`, href: `#/actividad/${x.actividad_id}` })),
+    ].sort((a, b) => String(b.fecha).localeCompare(String(a.fecha))).slice(0, 6);
     const pendientes = actividades.filter(a => !hechas.has(a.id))
         .sort((a, b) => (a.fecha_limite ?? "9999").localeCompare(b.fecha_limite ?? "9999"));
     const pendCurso = id => pendientes.filter(a => a.curso_id === id).length;
@@ -76,6 +93,22 @@ export async function inicio({ perfil }) {
                 ${pendientes.length ? "" : html`<div class="vacio chico">${icono("ok")}<p>¡Estás al día!</p></div>`}
             </div>
         </div>
+        ${novedades.length ? html`
+        <div class="tarjeta">
+            <div class="tarjeta-cabecera">
+                <span class="tarjeta-icono amarillo">${icono("megafono")}</span>
+                <div><h2>Novedades</h2><p>Últimas 2 semanas</p></div>
+                <span class="contador-pill amarillo">${novedades.length}</span>
+            </div>
+            <div class="pendientes-lista">
+                ${novedades.map(n => html`
+                <a class="pendiente-fila" href="${n.href}">
+                    <span class="tarjeta-icono ${n.clase} chico">${icono(n.icono)}</span>
+                    <div><strong>${n.texto}</strong><small>${n.sub}</small></div>
+                    <span class="pendiente-fecha">${fechaDMA(String(n.fecha).slice(0, 10))}</span>
+                </a>`)}
+            </div>
+        </div>` : ""}
         <div class="tarjeta noticia">
             <span class="noticia-cat">${cat}</span><h3>${tit}</h3><p>${txt}</p>
         </div>
@@ -105,32 +138,43 @@ export async function matricula({ perfil }) {
             req: req ? req.map(r => `${r.codigo} ${r.nombre}`).join(" o ") : null });
     }
 
-    const fila = f => {
-        const clase = f.estado ? "fila-matriculada" : f.bloqueado ? "fila-bloqueada" : "fila-disponible";
-        const chip = f.estado ? chipMatricula(f.estado)
-            : f.bloqueado ? html`<span class="estado-chip estado-lock">Bloqueado</span>` : html`<span class="estado-chip estado-open">Disponible</span>`;
-        const accion = f.estado ? html`<a class="accion-icon accion-check" href="#/curso/${f.c.id}" title="Entrar al curso">→</a>`
-            : f.bloqueado ? html`<span class="accion-icon accion-lock" title="Requiere aprobar ${f.req}">🔒</span>`
-            : html`<button type="button" class="accion-btn" title="Matricularme" data-accion="matricular" data-id="${f.c.id}"
-                     data-confirm="¿Matricularte en ${f.c.nombre}?" data-boton="Matricularme">+</button>`;
-        return html`<tr class="${clase}"><td>${f.c.codigo}</td><td>${f.c.nombre}</td><td>${f.c.nivel}</td>
-            <td>${f.c.profesor?.nombre ?? "Por asignar"}</td><td>${f.req ?? "--"}</td><td>${chip}</td><td>${accion}</td></tr>`;
-    };
+    const NIVELES = { 1: "Principiante", 2: "Intermedio", 3: "Avanzado" };
+    const fila = f => html`
+        <div class="nivel-fila ${f.estado ? "es-mio" : ""} ${f.bloqueado ? "bloqueada" : ""}">
+            <span class="nivel-badge nivel-${Math.min(f.c.nivel, 3)}">${NIVELES[f.c.nivel] || "Nivel " + f.c.nivel}</span>
+            <div class="nivel-info">
+                <h3>${f.c.codigo} · ${f.c.nombre}</h3>
+                <p>${icono("user")} ${f.c.profesor?.nombre ?? "Por asignar"}${f.c.descripcion ? ` · ${f.c.descripcion}` : ""}</p>
+                ${f.bloqueado ? html`<p class="texto-rojo">${icono("shield")} Requisito: aprobar ${f.req}</p>` : ""}
+            </div>
+            <div class="nivel-accion">
+                ${f.estado ? html`${chipMatricula(f.estado)}<a class="admin-btn secundario" href="#/curso/${f.c.id}">Entrar ${icono("flecha")}</a>`
+                : f.bloqueado ? html`<span class="estado-chip estado-lock"><i class="punto"></i>Bloqueado</span>`
+                : html`<button type="button" class="admin-btn" data-accion="matricular" data-id="${f.c.id}"
+                        data-confirm="¿Matricularte en ${f.c.nombre}?" data-boton="Matricularme">Matricularme</button>`}
+            </div>
+        </div>`;
+    const lista = [...grupos].sort(([a], [b]) => compararLenguajes(a, b));
 
     return {
         titulo: "Matrícula",
         html: html`
-<section class="student-panel">
-    <div class="panel-title">Matrícula de cursos</div>
-    <p class="muted panel-help">El primer nivel de cada lenguaje está abierto. Para el siguiente nivel tu profesor debe marcarte como <strong>Aprobado</strong> en el anterior.</p>
-    <div class="matricula-wrapper">
-        <table class="matricula-table">
-            <thead><tr><th>Código</th><th>Nombre</th><th>Nivel</th><th>Profesor</th><th>Requisito</th><th>Estado</th><th>✔</th></tr></thead>
-            <tbody>
-                ${[...grupos].sort(([a], [b]) => compararLenguajes(a, b)).map(([leng, filas]) => html`<tr class="grupo-lenguaje"><td colspan="7">${leng}</td></tr>${filas.map(fila)}`)}
-                ${visibles.length ? "" : html`<tr><td colspan="7">Todavía no hay cursos abiertos. Tu profesor los habilita cuando empieza a darlos.</td></tr>`}
-            </tbody>
-        </table>
+<div class="hero-dashboard-card"><div class="hero-dashboard-text">
+    <h1>Matrícula</h1>
+    <p>Elegí tus cursos. El primer nivel de cada tema está abierto; para el siguiente, tu profesor te marca como <strong>Aprobado</strong> en el anterior.</p>
+</div></div>
+<section class="course-panel">
+    <div class="panel-title">Cursos abiertos · ${visibles.length}</div>
+    <div class="catalogo-grupos">
+        ${lista.map(([leng, filas]) => html`
+        <div class="lenguaje-grupo">
+            <div class="lenguaje-cabecera">
+                <div class="lenguaje-thumb ${claseLenguaje(leng)}"></div>
+                <div><h2>${leng}</h2><p>${filas.length} ${filas.length === 1 ? "nivel" : "niveles"} · ${filas.filter(f => f.estado).length} matriculado</p></div>
+            </div>
+            <div class="niveles">${filas.map(fila)}</div>
+        </div>`)}
+        ${visibles.length ? "" : html`<div class="tarjeta"><div class="vacio">${icono("matricula")}<h3>Todavía no hay cursos abiertos</h3><p>Tu profesor los habilita cuando empieza a darlos.</p></div></div>`}
     </div>
 </section>`,
         acciones: {
@@ -152,8 +196,31 @@ async function notasDe(uid, cursoIds) {
 }
 
 export async function progreso({ perfil }) {
-    const matriculas = await misMatriculas(perfil.id);
+    const [matriculas, cursos] = await Promise.all([
+        misMatriculas(perfil.id),
+        q(sb.from("cursos").select("id, codigo, nombre, lenguaje, nivel, profesor_id")),
+    ]);
     const { actividades, ultimas } = await notasDe(perfil.id, matriculas.map(m => m.curso_id));
+    const estadoDe = new Map(matriculas.map(m => [m.curso_id, m.estado]));
+    const aprobados = matriculas.filter(m => m.estado === "Aprobado");
+    // Camino recomendado: grupos por lenguaje en orden de prioridad, con sus niveles.
+    const grupos = new Map();
+    for (const c of cursos.filter(c => c.profesor_id || estadoDe.has(c.id))) {
+        const k = c.lenguaje.toLowerCase();
+        if (!grupos.has(k)) grupos.set(k, { nombre: c.lenguaje, cursos: [] });
+        grupos.get(k).cursos.push(c);
+    }
+    const camino = [...grupos.entries()].sort(([a], [b]) => compararLenguajes(a, b)).map(([, g]) => ({ ...g, cursos: g.cursos.sort((a, b) => a.nivel - b.nivel) }));
+    const totalCamino = camino.reduce((s, g) => s + g.cursos.length, 0);
+    const hechosCamino = camino.reduce((s, g) => s + g.cursos.filter(c => estadoDe.get(c.id) === "Aprobado").length, 0);
+    const pctCamino = totalCamino ? Math.round(hechosCamino / totalCamino * 100) : 0;
+    const nodo = c => {
+        const e = estadoDe.get(c.id);
+        const clase = e === "Aprobado" ? "ok" : e === "Cursando" ? "actual" : e === "Reprobado" ? "mal" : "libre";
+        return html`<a class="camino-nodo ${clase}" href="${e ? `#/curso/${c.id}` : "#/matricula"}" title="${c.nombre}">
+            <span class="camino-punto">${e === "Aprobado" ? icono("ok") : c.nivel}</span>
+            <span class="camino-texto"><strong>${c.codigo}</strong><small>${e === "Aprobado" ? "Aprobado" : e === "Cursando" ? "Cursando" : e === "Reprobado" ? "Reprobado" : "Disponible"}</small></span></a>`;
+    };
     return {
         titulo: "Progreso",
         html: html`
@@ -180,7 +247,72 @@ export async function progreso({ perfil }) {
         ${matriculas.length ? "" : html`<div class="course-item"><h3>Sin progreso todavía</h3>
             <p>Matriculate en un curso para empezar a ver tu avance.</p></div>`}
     </div>
+</section>
+
+<section class="tarjeta camino-tarjeta">
+    <div class="tarjeta-cabecera">
+        <span class="tarjeta-icono naranja">${icono("capas")}</span>
+        <div><h2>Tu camino desde cero</h2><p>${hechosCamino} de ${totalCamino} cursos aprobados · orden recomendado</p></div>
+        <span class="contador-pill">${pctCamino}%</span>
+    </div>
+    <div class="camino-barra"><span style="width:${pctCamino}%"></span></div>
+    <div class="camino">
+        ${camino.map((g, i) => html`
+        <div class="camino-grupo">
+            <div class="camino-paso">${i + 1}</div>
+            <div class="camino-info"><h3>${g.nombre}</h3><div class="camino-nodos">${g.cursos.map(nodo)}</div></div>
+        </div>`)}
+        ${camino.length ? "" : html`<div class="vacio chico">${icono("capas")}<p>Todavía no hay cursos abiertos.</p></div>`}
+    </div>
+</section>
+
+<section class="tarjeta camino-tarjeta">
+    <div class="tarjeta-cabecera">
+        <span class="tarjeta-icono amarillo">${icono("award")}</span>
+        <div><h2>Certificados</h2><p>Uno por cada curso aprobado</p></div>
+        <span class="contador-pill amarillo">${aprobados.length}</span>
+    </div>
+    <div class="certificados-grid">
+        ${aprobados.map(m => html`
+        <a class="certificado-card" href="#/certificado/${m.curso_id}">
+            ${icono("award")}<div><strong>${m.curso.codigo} · ${m.curso.nombre}</strong><small>Ver e imprimir certificado</small></div>${icono("flecha")}
+        </a>`)}
+        ${aprobados.length ? "" : html`<div class="vacio chico">${icono("award")}<p>Cuando apruebes un curso, tu certificado aparece aquí.</p></div>`}
+    </div>
 </section>`,
+    };
+}
+
+// ------------------------------------------------------------- certificado ---
+
+export async function certificado({ perfil, params }) {
+    const id = Number(params.id);
+    const [mat] = await q(sb.from("matriculas").select(`estado, curso:cursos(${CURSO_COLS})`).eq("user_id", perfil.id).eq("curso_id", id));
+    if (!mat || mat.estado !== "Aprobado") throw new ErrorFen("El certificado está disponible cuando apruebes el curso.");
+    const { actividades, ultimas } = await notasDe(perfil.id, [id]);
+    const r = resumen(actividades, ultimas);
+    const c = mat.curso;
+    const d = new Date();
+    return {
+        titulo: `Certificado ${c.codigo}`, seccion: "Certificado", volver: ["progreso", "Volver a Progreso"],
+        html: html`
+<div class="cert-acciones"><button type="button" class="admin-btn" data-imprimir>${icono("download")} Imprimir o guardar como PDF</button></div>
+<article class="certificado">
+    <div class="cert-borde">
+        <div class="cert-logo">F</div>
+        <p class="cert-academia">Fen Academy</p>
+        <h1>Certificado de aprobación</h1>
+        <p class="cert-texto">Se certifica que</p>
+        <h2 class="cert-nombre">${perfil.nombre}</h2>
+        <p class="cert-texto">aprobó el curso</p>
+        <h3 class="cert-curso">${c.codigo} · ${c.nombre}</h3>
+        <p class="cert-detalle">${c.lenguaje} · Nivel ${c.nivel}${r.nota != null ? ` · Nota final ${num(r.nota)}/100` : ""}</p>
+        <div class="cert-firmas">
+            <div><span>${c.profesor?.nombre ?? "Profesor"}</span><small>Profesor del curso</small></div>
+            <div><span>${d.getDate()} de ${MESES[d.getMonth()]} de ${d.getFullYear()}</span><small>Fecha de emisión</small></div>
+        </div>
+    </div>
+</article>`,
     };
 }
 
@@ -190,7 +322,8 @@ export async function curso({ perfil, params, query }) {
     const id = Number(params.id);
     const [mat] = await q(sb.from("matriculas").select(`estado, curso:cursos(${CURSO_COLS})`).eq("user_id", perfil.id).eq("curso_id", id));
     if (!mat) throw new ErrorFen("No estás matriculado en este curso.");
-    const [clases, recursos, { actividades, ultimas }] = await Promise.all([
+    const [anuncios, clases, recursos, { actividades, ultimas }] = await Promise.all([
+        q(sb.from("anuncios").select("*, autor:perfiles(nombre)").eq("curso_id", id).order("fecha", { ascending: false })).catch(() => []),
         q(sb.from("clases").select("*").eq("curso_id", id).order("orden").order("id")),
         q(sb.from("recursos").select("*, autor:perfiles(nombre)").eq("curso_id", id).order("fecha_subida", { ascending: false })),
         notasDe(perfil.id, [id]),
@@ -207,7 +340,23 @@ export async function curso({ perfil, params, query }) {
     <p>${c.codigo} · ${c.lenguaje} · Nivel ${c.nivel} · Profesor: ${c.profesor?.nombre ?? "por asignar"} · ${chipMatricula(mat.estado)}</p>
 </div></section>
 ${tabs([{ id: "clases", texto: "Clases", icono: "class" }, { id: "evaluacion", texto: "Evaluación", icono: "eval" },
+        { id: "anuncios", texto: "Anuncios", icono: "megafono", contador: anuncios.filter(an => Date.now() - new Date(an.fecha) < 7 * 864e5).length || null },
         { id: "recursos", texto: "Recursos", icono: "folder" }], tab)}
+
+<div ${raw(panelTab("anuncios", tab))}>
+    <div class="anuncios-lista">
+        ${anuncios.map(an => html`
+        <article class="anuncio">
+            <div class="anuncio-cab">
+                <span class="tarjeta-icono naranja">${icono("megafono")}</span>
+                <div><h3>${an.titulo}</h3><small>${an.autor?.nombre ?? "Profesor"} · ${fechaHora(an.fecha)}</small></div>
+                
+            </div>
+            ${an.texto ? html`<div class="md">${an.texto}</div>` : ""}
+        </article>`)}
+        ${anuncios.length ? "" : html`<div class="tarjeta"><div class="vacio">${icono("megafono")}<h3>Sin anuncios</h3><p>Aquí verás los avisos de tu profesor.</p></div></div>`}
+    </div>
+</div>
 
 <div ${raw(panelTab("clases", tab))}>
     <div class="course-panel">
@@ -216,7 +365,7 @@ ${tabs([{ id: "clases", texto: "Clases", icono: "class" }, { id: "evaluacion", t
             ${clases.map(cl => html`
             <div class="course-item">
                 <h3>Clase ${cl.orden}: ${cl.titulo}</h3>
-                <p>${cl.descripcion}</p>
+                ${cl.descripcion ? html`<div class="md">${cl.descripcion}</div>` : ""}
                 ${actividades.filter(a => a.clase_id === cl.id).map(a => html`
                 <a class="clase-tarea" href="#/actividad/${a.id}">${iconoTipo(a.tipo)}<span class="clase-tarea-titulo">${a.titulo}</span>
                     <span class="valor-pill">${pct(a.valor)}</span>${chipEntrega(ultimas.get(a.id)?.estado)}</a>`)}
@@ -326,7 +475,7 @@ export async function actividad({ perfil, params }) {
         ${esExamen ? html`
         ${campo("eval", "Preguntas", html`${estadoEx.preguntas} preguntas · ${num(estadoEx.puntos)} puntos`)}
         ${campo("clock", "Duración", a.duracion_minutos ? a.duracion_minutos + " minutos" : "Sin límite de tiempo")}` : ""}
-        ${campo("file", "Instrucciones", html`<div class="det-consigna">${a.descripcion || "Sin instrucciones."}</div>`)}
+        ${campo("file", "Instrucciones", html`<div class="det-consigna md">${a.descripcion || "Sin instrucciones."}</div>`)}
     </aside>`;
 
     return {

@@ -2194,3 +2194,265 @@ main.dashboard-main > section, main.dashboard-main > div:not(#mensajes){ animati
 .previa-deshabilitada{ opacity:.7; pointer-events:none; }
 
 @media(max-width:600px){ .form-fila{ grid-template-columns:1fr; } }
+
+/* =========================================================
+   Menú en celular: la barra lateral se abre como cajón
+   ========================================================= */
+.sidebar-fondo{ display:none; }
+@media(max-width:850px){
+    .sidebar{
+        display:flex; position:fixed; top:0; left:0; bottom:0; z-index:60;
+        width:270px; height:100vh; overflow-y:auto;
+        transform:translateX(-105%); transition:transform .25s ease;
+        box-shadow:0 0 40px rgba(0,0,0,.5);
+    }
+    body.menu-abierto .sidebar{ transform:none; }
+    .sidebar.collapsed{ width:270px; }
+    .sidebar-fondo{
+        display:block; position:fixed; inset:0; z-index:55; background:rgba(2,6,23,.6);
+        opacity:0; pointer-events:none; transition:opacity .25s ease;
+    }
+    body.menu-abierto .sidebar-fondo{ opacity:1; pointer-events:auto; }
+    body.menu-abierto{ overflow:hidden; }
+    .topbar{ flex-direction:row !important; align-items:center !important; flex-wrap:wrap; }
+    .menu-toggle{ display:inline-flex !important; }
+    .dashboard-main{ padding:14px; }
+}
+
+/* =========================================================
+   Contenido con formato (clases, consignas, anuncios)
+   ========================================================= */
+.md{ color:#e2e8f0; font-size:15px; line-height:1.7; overflow-wrap:anywhere; }
+.md-plano{ white-space:pre-wrap; }
+.md > :first-child{ margin-top:0; }
+.md > :last-child{ margin-bottom:0; }
+.md p{ margin:0 0 12px; color:#cbd5e1; }
+.md h1, .md h2, .md h3, .md h4{ margin:20px 0 10px; color:#fff; line-height:1.3; }
+.md h1{ font-size:22px; } .md h2{ font-size:19px; } .md h3{ font-size:17px; } .md h4{ font-size:15px; }
+.md ul, .md ol{ margin:0 0 12px; padding-left:22px; color:#cbd5e1; }
+.md li{ margin:4px 0; }
+.md a{ color:#ff9a3c; }
+.md strong{ color:#fff; }
+.md blockquote{ margin:0 0 12px; padding:10px 14px; border-left:3px solid #ff7b00; background:rgba(255,123,0,.06); border-radius:0 8px 8px 0; color:#cbd5e1; }
+.md hr{ border:0; border-top:1px solid rgba(255,255,255,.1); margin:18px 0; }
+.md table{ border-collapse:collapse; margin:0 0 12px; font-size:14px; }
+.md th, .md td{ border:1px solid rgba(255,255,255,.1); padding:6px 10px; }
+.md img{ max-width:100%; border-radius:10px; }
+.md :not(pre) > code{
+    font-family:"JetBrains Mono", Consolas, "Courier New", monospace; font-size:.88em;
+    background:rgba(255,123,0,.1); color:#ffb067; padding:2px 6px; border-radius:6px;
+}
+.md pre{
+    margin:0 0 14px; border-radius:12px; overflow:hidden; background:#0b1020;
+    border:1px solid rgba(255,255,255,.08);
+}
+.md pre code{
+    display:block; padding:14px 16px !important; overflow-x:auto; background:transparent !important;
+    font-family:"JetBrains Mono", Consolas, "Courier New", monospace; font-size:13.5px; line-height:1.6;
+}
+.md-code-barra{
+    display:flex; align-items:center; justify-content:space-between; padding:6px 10px 6px 14px;
+    background:rgba(255,255,255,.04); border-bottom:1px solid rgba(255,255,255,.06);
+    font-size:12px; color:#94a3b8; text-transform:lowercase;
+}
+.md-code-barra button{
+    font:inherit; font-size:12px; color:#cbd5e1; background:rgba(255,255,255,.06); border:0;
+    padding:4px 10px; border-radius:6px; cursor:pointer;
+}
+.md-code-barra button:hover{ background:rgba(255,123,0,.2); color:#fff; }
+.md-video{ position:relative; aspect-ratio:16/9; margin:0 0 14px; border-radius:12px; overflow:hidden; background:#000; max-width:720px; }
+.md-video iframe{ position:absolute; inset:0; width:100%; height:100%; border:0; }
+.det-consigna.md{ white-space:normal; }
+
+.editor-codigo{ font-family:"JetBrains Mono", Consolas, "Courier New", monospace !important; font-size:13px !important; }
+.clase-item{ display:flex; flex-direction:column; gap:12px; }
+.clase-item-cab{ display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+.clase-item-cab h3{ margin:0; }
+.editar-clase-form{ padding:0 0 6px; }
+
+/* =========================================================
+   Calificar, libro de notas, anuncios, calendario, camino
+   ========================================================= */
+.avatar-mini{
+    flex:0 0 34px; width:34px; height:34px; border-radius:50%; display:inline-grid; place-items:center;
+    background:linear-gradient(135deg, #ff9a3c, #ea580c); color:#fff; font-weight:800; font-size:14px;
+}
+.avatar-grande{
+    flex:0 0 48px; width:48px; height:48px; border-radius:50%; display:grid; place-items:center;
+    background:linear-gradient(135deg, #ff9a3c, #ea580c); color:#fff; font-weight:800; font-size:20px;
+}
+.icono-solo{ min-width:36px; justify-content:center; text-align:center; text-decoration:none; }
+.admin-btn[disabled]{ opacity:.45; cursor:not-allowed; }
+.tarjeta-cuerpo{ padding:16px 18px; }
+.tarjeta-icono.chico{ flex-basis:32px; height:32px; }
+.tarjeta-icono.chico .icono{ width:16px; height:16px; }
+.tarjeta-cabecera > .admin-btn{ display:inline-flex; align-items:center; gap:8px; text-decoration:none; white-space:nowrap; font-size:13px; }
+.tarjeta-cabecera > .admin-btn .icono{ width:15px; height:15px; }
+
+/* Entregas */
+.filtros-entregas{ padding:14px 18px 6px; }
+.entregas-filas{ display:flex; flex-direction:column; padding:6px 0 10px; }
+.entrega-fila{
+    display:flex; align-items:center; gap:12px; padding:12px 18px; color:inherit; text-decoration:none;
+    border-top:1px solid rgba(255,255,255,.04); transition:background .15s;
+}
+.entrega-fila:hover{ background:rgba(255,255,255,.03); }
+.entrega-fila[hidden]{ display:none; }
+.entrega-fila.pendiente{ box-shadow:inset 3px 0 0 #f59e0b; }
+.entrega-fila-info{ flex:1; min-width:0; }
+.entrega-fila-info strong{ display:block; font-size:14px; }
+.entrega-fila-info small{ display:flex; align-items:center; gap:6px; color:#94a3b8; font-size:12px; margin-top:3px; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+.entrega-fila-info .tipo-circulo{ flex-basis:20px; width:20px; height:20px; }
+.entrega-fila-info .tipo-circulo .icono{ width:11px; height:11px; }
+.entrega-fila-nota{ width:70px; text-align:right; font-weight:700; color:#cbd5e1; font-size:14px; }
+
+/* Libro de notas */
+.libro-notas th{ vertical-align:bottom; }
+.libro-notas th .tipo-circulo{ width:22px; height:22px; flex-basis:22px; display:grid; margin:0 auto 4px; }
+.libro-notas th .tipo-circulo .icono{ width:12px; height:12px; }
+.lib-col{ display:block; max-width:110px; margin:0 auto; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; text-transform:none; letter-spacing:0; font-size:12px; color:#cbd5e1; }
+.libro-notas th small{ display:block; color:#60a5fa; text-transform:none; letter-spacing:0; }
+.lib-alumno{ display:flex; align-items:center; gap:10px; min-width:200px; }
+.lib-alumno strong{ display:block; }
+.lib-alumno small{ display:block; color:#64748b; font-size:12px; }
+.lib-nota{ display:inline-block; min-width:42px; padding:4px 8px; border-radius:8px; font-weight:800; font-size:13px; }
+.lib-nota.ok{ background:rgba(34,197,94,.14); color:#4ade80; }
+.lib-nota.baja{ background:rgba(239,68,68,.14); color:#f87171; }
+.lib-pend{ color:#fbbf24; display:inline-grid; place-items:center; }
+.lib-pend .icono{ width:16px; height:16px; }
+.lib-falta{ color:#475569; font-weight:700; }
+.lib-falta.vencida{ color:#f87171; }
+.libro-notas a{ text-decoration:none; }
+.estado-form{ display:flex; gap:8px; align-items:center; }
+.estado-form select{ min-width:130px; padding:8px 34px 8px 10px !important; }
+.estado-form .admin-btn{ font-size:13px; padding:8px 12px; }
+
+/* Pantalla calificar */
+.calificar-layout{ grid-template-columns:1fr minmax(280px, 360px); }
+.calificar-layout .det-panel{ order:2; }
+.input-nota{ font-size:22px !important; font-weight:800; text-align:center; }
+.segmentado{ display:grid; grid-template-columns:repeat(2, 1fr); gap:6px; }
+.segmentado label{ margin:0 !important; text-transform:none !important; letter-spacing:0 !important; }
+.segmentado input{ position:absolute; opacity:0; pointer-events:none; }
+.segmentado span{
+    display:block; text-align:center; padding:9px 8px; border-radius:10px; cursor:pointer; font-size:13px; font-weight:600;
+    background:#0f1522; border:1px solid rgba(255,255,255,.09); color:#cbd5e1; transition:all .15s;
+}
+.segmentado input:checked + span{ background:rgba(255,123,0,.15); border-color:#ff7b00; color:#ffb067; }
+.segmentado input:focus-visible + span{ box-shadow:0 0 0 3px rgba(255,123,0,.25); }
+.calificar-extra{ padding:0 18px 18px; }
+.calificar-extra .admin-btn{ width:100%; }
+
+/* Preguntas */
+.respuesta-acciones{ display:flex; flex-wrap:wrap; gap:6px; justify-content:flex-end; margin-top:10px; }
+.respuesta-acciones .admin-btn{ font-size:13px; padding:7px 12px; display:inline-flex; align-items:center; gap:6px; }
+.respuesta-acciones .icono{ width:14px; height:14px; }
+.form-editar-pregunta{ margin-top:10px; background:#0f1522; border:1px solid rgba(255,255,255,.06); border-radius:12px; }
+
+/* Anuncios */
+.anuncios-lista{ display:flex; flex-direction:column; gap:14px; }
+.anuncio{ background:#111827; border:1px solid rgba(255,255,255,.06); border-radius:16px; padding:16px 18px; }
+.anuncio-cab{ display:flex; align-items:center; gap:12px; margin-bottom:10px; }
+.anuncio-cab > div{ flex:1; min-width:0; }
+.anuncio-cab h3{ margin:0; font-size:16px; }
+.anuncio-cab small{ color:#94a3b8; font-size:12px; }
+.anuncio-cab .admin-btn{ font-size:13px; padding:7px 12px; }
+
+/* Calendario */
+.calendario-layout{ grid-template-columns:minmax(0, 2fr) minmax(260px, 1fr); }
+.cal-nav{ display:flex; gap:6px; }
+.cal-nav .admin-btn{ padding:7px 12px; font-size:14px; text-decoration:none; }
+.cal-grid{ display:grid; grid-template-columns:repeat(7, minmax(0, 1fr)); gap:1px; background:rgba(255,255,255,.05); }
+.cal-dia-nombre{ background:#0f1522; padding:8px; text-align:center; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:#64748b; }
+.cal-celda{ background:#111827; min-height:96px; padding:6px; display:flex; flex-direction:column; gap:4px; min-width:0; }
+.cal-celda.fuera{ background:#0d1320; }
+.cal-celda.fuera .cal-num{ color:#334155; }
+.cal-num{ font-size:12px; font-weight:700; color:#94a3b8; width:24px; height:24px; display:grid; place-items:center; border-radius:50%; }
+.cal-celda.hoy .cal-num{ background:#ff7b00; color:#fff; }
+.cal-evento{
+    display:block; font-size:11px; font-weight:600; padding:3px 6px; border-radius:6px; text-decoration:none;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis; border-left:3px solid;
+}
+.cal-evento.pendiente{ background:rgba(255,123,0,.12); color:#ffb067; border-color:#ff7b00; }
+.cal-evento.hecha{ background:rgba(34,197,94,.1); color:#4ade80; border-color:#22c55e; }
+.cal-evento.vencida{ background:rgba(239,68,68,.1); color:#f87171; border-color:#ef4444; }
+.cal-evento.borrador{ background:rgba(148,163,184,.1); color:#94a3b8; border-color:#64748b; }
+.cal-leyenda{ display:flex; gap:16px; flex-wrap:wrap; padding:12px 18px; font-size:12px; color:#94a3b8; }
+.cal-leyenda span{ display:inline-flex; align-items:center; gap:6px; }
+.cal-leyenda i{ width:10px; height:10px; border-radius:3px; }
+.cal-leyenda i.pendiente{ background:#ff7b00; } .cal-leyenda i.hecha{ background:#22c55e; }
+.cal-leyenda i.vencida{ background:#ef4444; } .cal-leyenda i.borrador{ background:#64748b; }
+
+/* Camino y certificados */
+.camino-tarjeta{ margin-top:20px; }
+.camino-barra{ height:8px; margin:16px 18px 4px; background:rgba(255,255,255,.06); border-radius:999px; overflow:hidden; }
+.camino-barra span{ display:block; height:100%; background:linear-gradient(90deg, #ff7b00, #facc15); border-radius:999px; }
+.camino{ padding:12px 18px 18px; display:flex; flex-direction:column; }
+.camino-grupo{ display:flex; gap:14px; position:relative; padding-bottom:16px; }
+.camino-grupo:not(:last-child)::before{ content:""; position:absolute; left:15px; top:32px; bottom:0; width:2px; background:rgba(255,255,255,.08); }
+.camino-paso{ flex:0 0 32px; height:32px; border-radius:50%; display:grid; place-items:center; background:#1f2937; color:#cbd5e1; font-weight:800; font-size:13px; z-index:1; }
+.camino-info{ flex:1; min-width:0; }
+.camino-info h3{ margin:5px 0 8px; font-size:15px; }
+.camino-nodos{ display:flex; flex-wrap:wrap; gap:8px; }
+.camino-nodo{
+    display:flex; align-items:center; gap:8px; padding:6px 12px 6px 6px; border-radius:999px; text-decoration:none; color:inherit;
+    background:#0f1522; border:1px solid rgba(255,255,255,.08); transition:border-color .15s;
+}
+.camino-nodo:hover{ border-color:rgba(255,123,0,.5); }
+.camino-punto{ width:26px; height:26px; border-radius:50%; display:grid; place-items:center; font-size:12px; font-weight:800; background:#1f2937; color:#94a3b8; }
+.camino-punto .icono{ width:14px; height:14px; }
+.camino-texto strong{ display:block; font-size:12px; }
+.camino-texto small{ display:block; font-size:11px; color:#64748b; }
+.camino-nodo.ok{ border-color:rgba(34,197,94,.4); }
+.camino-nodo.ok .camino-punto{ background:#16a34a; color:#fff; }
+.camino-nodo.actual{ border-color:rgba(255,123,0,.5); }
+.camino-nodo.actual .camino-punto{ background:#ff7b00; color:#fff; }
+.camino-nodo.mal .camino-punto{ background:#dc2626; color:#fff; }
+.certificados-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(260px, 1fr)); gap:12px; padding:16px 18px 18px; }
+.certificado-card{
+    display:flex; align-items:center; gap:12px; padding:14px; border-radius:12px; text-decoration:none; color:inherit;
+    background:linear-gradient(135deg, rgba(250,204,21,.1), rgba(17,24,39,.6)); border:1px solid rgba(250,204,21,.3);
+}
+.certificado-card > div{ flex:1; min-width:0; }
+.certificado-card strong{ display:block; font-size:14px; }
+.certificado-card small{ color:#94a3b8; font-size:12px; }
+.certificado-card > .icono{ width:22px; height:22px; color:#facc15; flex:0 0 22px; }
+
+.cert-acciones{ display:flex; justify-content:flex-end; margin-bottom:16px; }
+.cert-acciones .admin-btn{ display:inline-flex; align-items:center; gap:8px; }
+.certificado{ max-width:900px; margin:0 auto; background:#fffdf7; color:#1f2937; border-radius:8px; padding:18px; box-shadow:0 20px 50px rgba(0,0,0,.4); }
+.cert-borde{ border:3px double #c2410c; padding:48px 36px; text-align:center; }
+.cert-logo{ width:64px; height:64px; margin:0 auto 8px; border-radius:16px; background:#ff7b00; color:#fff; display:grid; place-items:center; font-size:34px; font-weight:800; }
+.cert-academia{ margin:0; font-weight:800; letter-spacing:.2em; text-transform:uppercase; color:#c2410c; font-size:13px; }
+.certificado h1{ margin:18px 0 6px; font-size:34px; color:#111827; font-family:Georgia, "Times New Roman", serif; }
+.cert-texto{ margin:10px 0 4px; color:#4b5563; font-size:16px; }
+.cert-nombre{ margin:4px 0; font-size:36px; color:#c2410c; font-family:Georgia, "Times New Roman", serif; border-bottom:1px solid #e5e7eb; display:inline-block; padding:0 24px 6px; }
+.cert-curso{ margin:6px 0; font-size:24px; color:#111827; }
+.cert-detalle{ color:#6b7280; margin:4px 0 0; }
+.cert-firmas{ display:flex; justify-content:space-around; gap:20px; margin-top:48px; }
+.cert-firmas div{ display:flex; flex-direction:column; align-items:center; min-width:200px; }
+.cert-firmas span{ font-weight:700; border-top:1px solid #9ca3af; padding-top:8px; width:100%; }
+.cert-firmas small{ color:#6b7280; margin-top:2px; }
+
+@media print{
+    body{ background:#fff !important; }
+    .sidebar, .topbar, .footer-bar, .cert-acciones, #mensajes, .sidebar-fondo{ display:none !important; }
+    .dashboard-main{ padding:0 !important; }
+    .certificado{ box-shadow:none; max-width:none; }
+    @page{ size:landscape; margin:12mm; }
+}
+
+.nivel-fila.bloqueada{ opacity:.7; }
+.nivel-info p .icono{ width:13px; height:13px; vertical-align:-2px; }
+
+@media(max-width:1000px){
+    .calificar-layout, .calendario-layout{ grid-template-columns:1fr; }
+    .calificar-layout .det-panel{ order:0; }
+}
+@media(max-width:600px){
+    .cal-celda{ min-height:64px; padding:3px; }
+    .cal-evento{ font-size:0; padding:0; height:6px; border-left:0; }
+    .entrega-fila-nota, .entrega-fila .ingresar{ display:none; }
+    .cert-borde{ padding:28px 14px; }
+    .certificado h1{ font-size:24px; } .cert-nombre{ font-size:26px; }
+}

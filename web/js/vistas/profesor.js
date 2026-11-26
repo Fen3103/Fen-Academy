@@ -1,8 +1,9 @@
 // Pantallas del PROFESOR (y del admin en el "panel docente").
 // La base solo deja ver y modificar los cursos asignados al profesor.
 import { sb, q, rpc, ErrorFen, subirArchivo, descargar, borrarArchivos, EXT_RECURSOS, EXT_ENTREGAS, ultimaPorActividad, resumen } from "../api.js";
-import { html, raw, num, pct, fecha, fechaHora, chipEntrega, chipTipo, tabs, panelTab, enlaceExterno, exito, hoy, claseLenguaje, icono, iconoTipo, celdaFecha, etiquetasActividad, compararLenguajes, fechaDMA } from "../ui.js";
+import { html, raw, num, pct, fecha, fechaHora, chipEntrega, chipTipo, tabs, panelTab, enlaceExterno, exito, hoy, claseLenguaje, icono, iconoTipo, celdaFecha, etiquetasActividad, compararLenguajes, fechaDMA, vencida } from "../ui.js";
 import { listaRecursos, preguntaCorregida } from "./estudiante.js";
+import { AYUDA_MD } from "../md.js";
 const EXT_ENTREGAS_TXT = EXT_ENTREGAS.join(", ") + " · máx. 16 MB";
 
 const ESTADOS_ENTREGA = ["Pendiente", "Revisado", "Aprobado", "Rechazado"];
@@ -178,6 +179,7 @@ export async function curso({ perfil, params, query }) {
         q(sb.from("matriculas").select("*, alumno:perfiles(id, nombre, usuario)").eq("curso_id", id).order("fecha")),
         q(sb.from("recursos").select("*, autor:perfiles(nombre)").eq("curso_id", id).order("fecha_subida", { ascending: false })),
     ]);
+    const anuncios = await q(sb.from("anuncios").select("*, autor:perfiles(nombre)").eq("curso_id", id).order("fecha", { ascending: false })).catch(() => null);
     // Si las ve un admin u otro docente no asignado, RLS devuelve listas vacías: avisamos.
     const actIds = actividades.map(a => a.id);
     const entregas = actIds.length ? await q(sb.from("entregas").select("*, alumno:perfiles(nombre)").in("actividad_id", actIds)
@@ -189,37 +191,40 @@ export async function curso({ perfil, params, query }) {
     const siguiente = clases.length ? Math.max(...clases.map(x => x.orden)) + 1 : 1;
     const tab = query.get("tab") || "clases";
 
+    const publicadas = actividades.filter(a => a.publicada);
+    const ultimasDe = uid => ultimaPorActividad(entregas.filter(e => e.user_id === uid));
+    const celdaNota = (a, en) => {
+        if (en?.nota != null) return html`<span class="lib-nota ${Number(en.nota) >= 70 ? "ok" : "baja"}">${num(en.nota)}</span>`;
+        if (en) return html`<span class="lib-pend" title="Entregada, sin calificar">${icono("clock")}</span>`;
+        return html`<span class="lib-falta ${vencida(a.fecha_limite) ? "vencida" : ""}" title="${vencida(a.fecha_limite) ? "No entregó (vencida)" : "Sin entregar"}">—</span>`;
+    };
     const filaEstudiante = m => {
-        const r = resumen(actividades.filter(a => a.publicada), ultimaPorActividad(entregas.filter(e => e.user_id === m.user_id)));
+        const ult = ultimasDe(m.user_id);
+        const r = resumen(publicadas, ult);
         return html`<tr>
-            <td><strong>${m.alumno.nombre}</strong><p>@${m.alumno.usuario}</p></td>
-            <td>${r.entregadas} / ${r.cantidad}</td>
-            <td>${pct(r.evaluado)} de ${pct(r.total)}</td>
-            <td><span class="grade-chip">${num(r.nota)}/100</span></td>
-            <td><form data-accion="estadoMatricula" data-id="${m.id}" class="inline-admin-form">
-                <select name="estado">${opciones(ESTADOS_MATRICULA, m.estado)}</select>
-                <button class="admin-btn" type="submit">Guardar</button></form></td></tr>`;
+            <td class="lib-alumno"><span class="avatar-mini">${(m.alumno.nombre || "?").slice(0, 1).toUpperCase()}</span>
+                <div><strong>${m.alumno.nombre}</strong><small>@${m.alumno.usuario} · ${r.entregadas}/${r.cantidad} entregadas</small></div></td>
+            ${publicadas.map(a => html`<td class="centro">${ult.get(a.id) ? html`<a href="#/docente/calificar/${ult.get(a.id).id}">${celdaNota(a, ult.get(a.id))}</a>` : celdaNota(a, null)}</td>`)}
+            <td class="centro"><strong class="nota-total">${num(r.nota)}</strong><small class="muted"> /100</small></td>
+            <td><form data-accion="estadoMatricula" data-id="${m.id}" class="estado-form">
+                <select name="estado" aria-label="Estado del curso">${opciones(ESTADOS_MATRICULA, m.estado)}</select>
+                <button class="admin-btn secundario" type="submit">Guardar</button></form></td></tr>`;
     };
 
+    // Entregas: solo la última de cada estudiante por actividad; primero las que faltan calificar.
+    const ultimasEntregas = [...new Map(entregas.map(e => [`${e.user_id}-${e.actividad_id}`, e])).values()]
+        .sort((x, y) => (x.estado === "Pendiente" ? 0 : 1) - (y.estado === "Pendiente" ? 0 : 1)
+            || String(y.fecha_entrega).localeCompare(String(x.fecha_entrega)));
     const filaEntrega = en => {
         const a = actPorId.get(en.actividad_id);
-        const examen = a.tipo === "examen";
-        return html`<tr>
-            <td>${en.alumno?.nombre}</td>
-            <td><strong>${a.titulo}</strong> ${chipTipo(a.tipo)}
-                <p>${fechaHora(en.fecha_entrega)} ${en.fuera_de_tiempo ? html`<span class="texto-alerta">(fuera de tiempo)</span>` : ""}</p>
-                ${en.comentario ? html`<p>💬 ${en.comentario}</p>` : ""}</td>
-            <td>${examen ? html`<a class="activity-link" href="#/docente/revisar/${en.id}">Ver respuestas</a>` : ""}
-                ${en.archivo_path ? html`<button type="button" class="activity-link" data-accion="descargar" data-ruta="${en.archivo_path}" data-nombre="${en.nombre_original}">${en.nombre_original}</button>` : ""}
-                ${en.enlace ? html`<p>${enlaceExterno(en.enlace)}</p>` : ""}</td>
-            <td>${chipEntrega(en.estado)} ${en.nota != null ? html`<br><span class="grade-chip">${num(en.nota)}/100</span>` : ""}</td>
-            <td><form data-accion="calificar" data-id="${en.id}" data-examen="${examen ? "1" : ""}" class="grade-form">
-                <div class="grade-form-row">
-                    ${examen ? "" : html`<input type="number" name="nota" min="0" max="100" step="0.01" placeholder="Nota 0-100" value="${en.nota ?? ""}">`}
-                    <select name="estado">${opciones(ESTADOS_ENTREGA, en.estado)}</select>
-                </div>
-                <textarea name="retroalimentacion" placeholder="Retroalimentación para el estudiante">${en.retroalimentacion}</textarea>
-                <button class="admin-btn" type="submit">Guardar</button></form></td></tr>`;
+        return html`<a class="entrega-fila ${en.estado === "Pendiente" ? "pendiente" : ""}" data-estado="${en.estado}" href="#/docente/calificar/${en.id}">
+            <span class="avatar-mini">${(en.alumno?.nombre || "?").slice(0, 1).toUpperCase()}</span>
+            <div class="entrega-fila-info"><strong>${en.alumno?.nombre}</strong>
+                <small>${iconoTipo(a.tipo)} ${a.titulo} · ${fechaHora(en.fecha_entrega)}${en.fuera_de_tiempo ? " · tardía" : ""}</small></div>
+            ${chipEntrega(en.estado)}
+            <span class="entrega-fila-nota">${en.nota != null ? num(en.nota) + "/100" : "—"}</span>
+            <span class="ingresar">${en.estado === "Pendiente" ? "Calificar" : "Ver"} ${icono("flecha")}</span>
+        </a>`;
     };
 
     return {
@@ -231,28 +236,48 @@ export async function curso({ perfil, params, query }) {
 </div></section>
 ${tabs([{ id: "clases", texto: "Clases", icono: "class" }, { id: "evaluacion", texto: "Evaluación", icono: "eval" },
         { id: "entregas", texto: "Entregas", icono: "inbox", contador: porRevisar },
-        { id: "estudiantes", texto: "Estudiantes", icono: "users" }, { id: "recursos", texto: "Recursos", icono: "folder" },
+        { id: "estudiantes", texto: "Estudiantes", icono: "users" }, { id: "anuncios", texto: "Anuncios", icono: "megafono" },
+        { id: "recursos", texto: "Recursos", icono: "folder" },
         { id: "datos", texto: "Datos del curso", icono: "settings" }], tab)}
 
 <div ${raw(panelTab("clases", tab))}>
     <section class="teacher-grid">
         <div class="course-panel">
             <div class="panel-title">Crear clase</div>
-            <form data-accion="crearClase" class="teacher-form">
+            <form data-accion="crearClase" class="teacher-form form-limpio">
                 <label>Título</label><input type="text" name="titulo" required>
                 <label>Número de clase</label><input type="number" name="orden" min="1" value="${siguiente}">
-                <label>Descripción / contenido</label><textarea name="descripcion"></textarea>
-                <button type="submit">Guardar clase</button>
+                <label>Contenido de la clase</label><textarea name="descripcion" rows="10" class="editor-codigo"
+                    placeholder="Explicación, ejemplos de código, enlaces y videos…"></textarea>
+                <small>${AYUDA_MD}</small>
+                <button type="submit" class="admin-btn">Guardar clase</button>
             </form>
         </div>
         <div class="course-panel">
             <div class="panel-title">Clases publicadas</div>
             <div class="course-list">
                 ${clases.map(cl => html`
-                <div class="course-item item-con-acciones">
-                    <div><h3>Clase ${cl.orden}: ${cl.titulo}</h3><p>${cl.descripcion}</p></div>
-                    <button type="button" class="admin-btn danger" data-accion="eliminarClase" data-id="${cl.id}"
-                        data-confirm="¿Eliminar la clase «${cl.titulo}»? Sus actividades quedarán como generales.">Eliminar</button>
+                <div class="course-item clase-item">
+                    <div class="clase-item-cab">
+                        <h3>Clase ${cl.orden}: ${cl.titulo}</h3>
+                        <div class="acciones-fila">
+                            <button type="button" class="admin-btn secundario" data-toggle="editar-clase-${cl.id}">${icono("settings")} Editar</button>
+                            <button type="button" class="admin-btn danger" data-accion="eliminarClase" data-id="${cl.id}"
+                                data-confirm="¿Eliminar la clase «${cl.titulo}»? Sus actividades quedarán como generales.">Eliminar</button>
+                        </div>
+                    </div>
+                    <div id="editar-clase-${cl.id}" class="resource-form-panel">
+                        <form data-accion="editarClase" data-id="${cl.id}" class="form-limpio editar-clase-form">
+                            <div class="form-fila">
+                                <div><label>Título</label><input type="text" name="titulo" value="${cl.titulo}" required></div>
+                                <div><label>Número de clase</label><input type="number" name="orden" min="1" value="${cl.orden}"></div>
+                            </div>
+                            <label>Contenido de la clase</label><textarea name="descripcion" rows="10" class="editor-codigo">${cl.descripcion}</textarea>
+                            <small class="muted">${AYUDA_MD}</small>
+                            <button type="submit" class="admin-btn">${icono("ok")} Guardar cambios</button>
+                        </form>
+                    </div>
+                    ${cl.descripcion ? html`<div class="md">${cl.descripcion}</div>` : html`<p class="muted">Sin contenido todavía.</p>`}
                 </div>`)}
                 ${clases.length ? "" : html`<div class="course-item"><h3>Sin clases</h3><p>Creá la primera clase para este curso.</p></div>`}
             </div>
@@ -316,26 +341,66 @@ ${tabs([{ id: "clases", texto: "Clases", icono: "class" }, { id: "evaluacion", t
 </div>
 
 <div ${raw(panelTab("entregas", tab))}>
-    <section class="course-panel">
-        <div class="panel-title">Entregas de estudiantes</div>
-        <div class="evaluation-wrapper"><table class="evaluation-table">
-            <thead><tr><th>Estudiante</th><th>Actividad</th><th>Trabajo</th><th>Estado</th><th>Calificar</th></tr></thead>
-            <tbody>${entregas.map(filaEntrega)}
-                ${entregas.length ? "" : html`<tr><td colspan="5">Todavía no hay entregas.</td></tr>`}</tbody>
-        </table></div>
+    <section class="tarjeta">
+        <div class="tarjeta-cabecera">
+            <span class="tarjeta-icono naranja">${icono("inbox")}</span>
+            <div><h2>Entregas de estudiantes</h2><p>${porRevisar ? `${porRevisar} por calificar` : "Todo calificado"} · se muestra la última entrega de cada estudiante</p></div>
+            ${porRevisar ? html`<a class="admin-btn" href="#/docente/calificar/${ultimasEntregas.find(e => e.estado === "Pendiente")?.id}">Empezar a calificar ${icono("flecha")}</a>` : ""}
+        </div>
+        <div class="filtros-lenguaje filtros-entregas">
+            <button type="button" data-filtro-entregas="Pendiente" class="activo">Por calificar</button>
+            <button type="button" data-filtro-entregas="todas">Todas</button>
+        </div>
+        <div class="entregas-filas">
+            ${ultimasEntregas.map(filaEntrega)}
+            <div class="vacio chico entregas-vacio" ${raw(porRevisar ? "hidden" : "")}>${icono("ok")}<p>${entregas.length ? "No hay entregas por calificar." : "Todavía no hay entregas."}</p></div>
+        </div>
     </section>
 </div>
 
 <div ${raw(panelTab("estudiantes", tab))}>
-    <section class="course-panel">
-        <div class="panel-title">Estudiantes matriculados</div>
+    <section class="tarjeta">
+        <div class="tarjeta-cabecera">
+            <span class="tarjeta-icono">${icono("users")}</span>
+            <div><h2>Libro de notas</h2><p>${matriculas.length} ${matriculas.length === 1 ? "estudiante" : "estudiantes"} · nota de cada actividad sobre 100</p></div>
+            <button type="button" class="admin-btn secundario" id="exportar-notas" ${raw(matriculas.length ? "" : "disabled")}>${icono("download")} Exportar a Excel (CSV)</button>
+        </div>
         <p class="muted panel-help">Marcar a un estudiante como <strong>Aprobado</strong> le permite matricular el siguiente nivel de ${c.lenguaje}.
             Aprobado o Reprobado cierra sus entregas y exámenes en este curso.</p>
-        <div class="evaluation-wrapper"><table class="evaluation-table">
-            <thead><tr><th>Estudiante</th><th>Realizadas</th><th>Evaluado</th><th>Nota acumulada</th><th>Estado del curso</th></tr></thead>
+        <div class="act-tabla-wrap"><table class="act-tabla libro-notas">
+            <thead><tr><th>Estudiante</th>
+                ${publicadas.map(a => html`<th class="centro" title="${a.titulo}">${iconoTipo(a.tipo)}<span class="lib-col">${a.titulo}</span><small>${pct(a.valor)}</small></th>`)}
+                <th class="centro">Nota</th><th>Estado del curso</th></tr></thead>
             <tbody>${matriculas.map(filaEstudiante)}
-                ${matriculas.length ? "" : html`<tr><td colspan="5">Todavía no hay estudiantes matriculados.</td></tr>`}</tbody>
+                ${matriculas.length ? "" : html`<tr><td colspan="${publicadas.length + 3}" class="vacio-celda">Todavía no hay estudiantes matriculados.</td></tr>`}</tbody>
         </table></div>
+    </section>
+</div>
+
+<div ${raw(panelTab("anuncios", tab))}>
+    <section class="teacher-grid">
+        <div class="course-panel">
+            <div class="panel-title">Nuevo anuncio</div>
+            ${anuncios === null ? html`<p class="muted panel-help">Para usar anuncios, ejecutá en Supabase la migración <strong>20261127000400_mejoras_aula.sql</strong>.</p>` : html`
+            <form data-accion="crearAnuncio" class="teacher-form form-limpio">
+                <label>Título</label><input type="text" name="titulo" required placeholder="Ej: Mañana no hay clase">
+                <label>Mensaje</label><textarea name="texto" rows="6" placeholder="Detalles del aviso…"></textarea>
+                <small>${AYUDA_MD}</small>
+                <button type="submit" class="admin-btn">${icono("megafono")} Publicar anuncio</button>
+            </form>`}
+        </div>
+        <div class="anuncios-lista">
+            ${(anuncios || []).map(an => html`
+        <article class="anuncio">
+            <div class="anuncio-cab">
+                <span class="tarjeta-icono naranja">${icono("megafono")}</span>
+                <div><h3>${an.titulo}</h3><small>${an.autor?.nombre ?? "Profesor"} · ${fechaHora(an.fecha)}</small></div>
+                <button type="button" class="admin-btn danger" data-accion="eliminarAnuncio" data-id="${an.id}" data-confirm="¿Eliminar el anuncio «${an.titulo}»?">Eliminar</button>
+            </div>
+            ${an.texto ? html`<div class="md">${an.texto}</div>` : ""}
+        </article>`)}
+            ${anuncios?.length ? "" : html`<div class="tarjeta"><div class="vacio">${icono("megafono")}<h3>Sin anuncios</h3><p>Publicá avisos para tus estudiantes: cambios de fecha, recordatorios, material nuevo.</p></div></div>`}
+        </div>
     </section>
 </div>
 
@@ -381,6 +446,37 @@ ${tabs([{ id: "clases", texto: "Clases", icono: "class" }, { id: "evaluacion", t
         </div>` : ""}
     </section>
 </div>`,
+        alMontar(raiz) {
+            // Filtro de entregas: por calificar / todas.
+            const filas = [...raiz.querySelectorAll(".entrega-fila")];
+            const vacio = raiz.querySelector(".entregas-vacio");
+            const aplicar = f => {
+                let visibles = 0;
+                filas.forEach(x => { x.hidden = f !== "todas" && x.dataset.estado !== f; if (!x.hidden) visibles++; });
+                if (vacio) vacio.hidden = visibles > 0;
+            };
+            raiz.querySelectorAll("[data-filtro-entregas]").forEach(b => b.addEventListener("click", () => {
+                raiz.querySelectorAll("[data-filtro-entregas]").forEach(x => x.classList.toggle("activo", x === b));
+                aplicar(b.dataset.filtroEntregas);
+            }));
+            aplicar("Pendiente");
+            // Libro de notas → CSV (se abre en Excel).
+            raiz.querySelector("#exportar-notas")?.addEventListener("click", () => {
+                const celda = v => `"${String(v ?? "").replace(/"/g, '""')}"`;
+                const filasCsv = [["Estudiante", "Usuario", ...publicadas.map(a => `${a.titulo} (${num(a.valor)}%)`), "Nota acumulada", "Estado"]];
+                for (const m of matriculas) {
+                    const ult = ultimasDe(m.user_id);
+                    filasCsv.push([m.alumno.nombre, m.alumno.usuario,
+                        ...publicadas.map(a => ult.get(a.id)?.nota ?? (ult.get(a.id) ? "sin calificar" : "")),
+                        num(resumen(publicadas, ult).nota), m.estado]);
+                }
+                const csv = "\uFEFF" + filasCsv.map(f => f.map(celda).join(";")).join("\r\n");
+                const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+                const link = Object.assign(document.createElement("a"), { href: url, download: `notas-${c.codigo}.csv` });
+                document.body.append(link); link.click(); link.remove();
+                setTimeout(() => URL.revokeObjectURL(url), 1000);
+            });
+        },
         acciones: {
             async editarCurso(d) {
                 const nivel = Number(d.nivel);
@@ -398,6 +494,15 @@ ${tabs([{ id: "clases", texto: "Clases", icono: "class" }, { id: "evaluacion", t
                 await q(sb.from("clases").insert({ curso_id: id, titulo: d.titulo.trim(), orden: Number(d.orden) || siguiente, descripcion: nulo(d.descripcion) }));
                 exito("Clase creada.");
             },
+            async crearAnuncio(d) {
+                await q(sb.from("anuncios").insert({ curso_id: id, titulo: d.titulo.trim(), texto: nulo(d.texto) }));
+                exito("Anuncio publicado.");
+            },
+            async eliminarAnuncio(d) { await q(sb.from("anuncios").delete().eq("id", d.id)); exito("Anuncio eliminado."); },
+            async editarClase(d) {
+                await q(sb.from("clases").update({ titulo: d.titulo.trim(), orden: Number(d.orden) || 1, descripcion: nulo(d.descripcion) }).eq("id", d.id));
+                exito("Clase actualizada.");
+            },
             async eliminarClase(d) { await q(sb.from("clases").delete().eq("id", d.id)); exito("Clase eliminada."); },
             async crearActividad(d) {
                 const examen = d.tipo === "examen";
@@ -414,16 +519,6 @@ ${tabs([{ id: "clases", texto: "Clases", icono: "class" }, { id: "evaluacion", t
                 await borrarArchivos(archivos);   // antes de borrar la fila: el permiso se calcula con la actividad
                 await q(sb.from("actividades").delete().eq("id", d.id));
                 exito("Actividad eliminada.");
-            },
-            async calificar(d) {
-                const cambios = { estado: d.estado, retroalimentacion: nulo(d.retroalimentacion) };
-                if (!d.examen) {
-                    const nota = nulo(d.nota);
-                    if (nota !== null && (isNaN(nota) || nota < 0 || nota > 100)) throw new ErrorFen("La nota debe estar entre 0 y 100.");
-                    cambios.nota = nota === null ? null : Number(nota);
-                }
-                await q(sb.from("entregas").update(cambios).eq("id", d.id));
-                exito("Calificación guardada.");
             },
             async estadoMatricula(d) { await q(sb.from("matriculas").update({ estado: d.estado }).eq("id", d.id)); exito("Estado actualizado."); },
             async subirRecurso(d) {
@@ -491,7 +586,7 @@ export async function actividad({ params, query }) {
             ${campo("chart", "Valor en la nota final", html`<span class="valor-pill">${pct(ac.valor)}</span>`)}
             ${esExamen ? html`${campo("eval", "Preguntas", `${lista.length} preguntas · ${num(puntos)} puntos`)}
                 ${campo("clock", "Duración", ac.duracion_minutos ? ac.duracion_minutos + " minutos" : "Sin límite de tiempo")}` : ""}
-            ${campo("file", "Instrucciones", html`<div class="det-consigna">${ac.descripcion || "Sin instrucciones."}</div>`)}
+            ${campo("file", "Instrucciones", html`<div class="det-consigna md">${ac.descripcion || "Sin instrucciones."}</div>`)}
         </aside>
         <section class="act-principal">
             ${esExamen ? html`
@@ -561,6 +656,7 @@ ${tabs(pestañas, tab)}
             <label class="check"><input type="checkbox" name="mostrar_solucion" value="1" ${raw(ac.mostrar_solucion ? "checked" : "")}>
                 Mostrar la corrección al estudiante después de enviar</label>` : ""}
             <label>${esExamen ? "Instrucciones" : "Consigna"}</label><textarea name="descripcion" rows="6">${ac.descripcion}</textarea>
+            <small>${AYUDA_MD}</small>
             <button class="admin-btn" type="submit">${icono("ok")} Guardar cambios</button>
         </form>
     </div>
@@ -597,14 +693,37 @@ ${esExamen ? html`
         <div class="course-panel">
             <div class="panel-title">Preguntas · ${num(puntos)} puntos</div>
             <div class="preguntas-lista">
-            ${lista.map(x => html`
+            ${lista.map((x, i) => html`
             <div class="pregunta">
-                <h3>${x.orden}. ${x.enunciado} <span class="puntos">(${num(x.puntos)} pts · ${x.tipo === "opcion_unica" ? "opción única" : "respuesta corta"})</span></h3>
+                <h3>${i + 1}. ${x.enunciado} <span class="puntos">(${num(x.puntos)} pts · ${x.tipo === "opcion_unica" ? "opción única" : "respuesta corta"})</span></h3>
                 ${x.tipo === "opcion_unica"
                     ? x.opciones.map(o => html`<div class="opcion ${o.id === x.opcion_correcta_id ? "correcta" : ""}">${o.id === x.opcion_correcta_id ? "✓ " : ""}${o.texto}</div>`)
                     : html`<p>Respuestas aceptadas: <strong>${(x.respuestas_aceptadas || "").split("|").filter(Boolean).join(" / ")}</strong></p>`}
-                ${bloqueado ? "" : html`<div class="respuesta-acciones"><button type="button" class="admin-btn danger" data-accion="eliminarPregunta"
-                    data-id="${x.id}" data-confirm="¿Eliminar esta pregunta?">Eliminar</button></div>`}
+                ${bloqueado ? "" : html`<div class="respuesta-acciones">
+                    <button type="button" class="admin-btn secundario icono-solo" data-accion="moverPregunta" data-id="${x.id}" data-dir="-1" title="Subir" ${raw(i === 0 ? "disabled" : "")}>↑</button>
+                    <button type="button" class="admin-btn secundario icono-solo" data-accion="moverPregunta" data-id="${x.id}" data-dir="1" title="Bajar" ${raw(i === lista.length - 1 ? "disabled" : "")}>↓</button>
+                    <button type="button" class="admin-btn secundario" data-toggle="editar-pregunta-${x.id}">${icono("settings")} Editar</button>
+                    <button type="button" class="admin-btn danger" data-accion="eliminarPregunta" data-id="${x.id}" data-confirm="¿Eliminar esta pregunta?">Eliminar</button></div>
+                <div id="editar-pregunta-${x.id}" class="resource-form-panel">
+                    <form data-accion="editarPregunta" data-id="${x.id}" class="form-limpio form-editar-pregunta">
+                        <div class="form-fila">
+                            <div><label>Tipo</label><select name="tipo" data-tipo-pregunta>
+                                <option value="opcion_unica" ${raw(x.tipo === "opcion_unica" ? "selected" : "")}>Opción única</option>
+                                <option value="respuesta_corta" ${raw(x.tipo === "respuesta_corta" ? "selected" : "")}>Respuesta corta</option></select></div>
+                            <div><label>Puntos</label><input type="number" name="puntos" min="0.5" step="0.5" value="${num(x.puntos)}"></div>
+                        </div>
+                        <label>Enunciado</label><textarea name="enunciado" required rows="3">${x.enunciado}</textarea>
+                        <div data-tipo="opcion_unica" class="form-grupo" ${raw(x.tipo === "opcion_unica" ? "" : "hidden")}>
+                            <label>Opciones (una por línea; la correcta empieza con *)</label>
+                            <textarea name="opciones" rows="5">${(x.opciones || []).map(o => (o.id === x.opcion_correcta_id ? "*" : "") + o.texto).join("\n")}</textarea>
+                        </div>
+                        <div data-tipo="respuesta_corta" class="form-grupo" ${raw(x.tipo === "respuesta_corta" ? "" : "hidden")}>
+                            <label>Respuestas aceptadas (separadas por |)</label>
+                            <input type="text" name="aceptadas" value="${x.respuestas_aceptadas ?? ""}">
+                        </div>
+                        <button class="admin-btn" type="submit">${icono("ok")} Guardar pregunta</button>
+                    </form>
+                </div>`}
             </div>`)}
             ${lista.length ? "" : html`<div class="vacio chico">${icono("eval")}<p>Todavía no hay preguntas. Agregá al menos una para poder publicar.</p></div>`}
             </div>
@@ -634,11 +753,12 @@ ${esExamen ? html`
     </section>
 </div>`,
         alMontar(raiz) {
-            const tipo = raiz.querySelector("#tipo-pregunta");
-            if (!tipo) return;
-            const actualizar = () => raiz.querySelectorAll("#form-pregunta [data-tipo]").forEach(d => (d.hidden = d.dataset.tipo !== tipo.value));
-            tipo.addEventListener("change", actualizar);
-            actualizar();
+            raiz.querySelectorAll("#tipo-pregunta, [data-tipo-pregunta]").forEach(sel => {
+                const form = sel.closest("form");
+                const actualizar = () => form.querySelectorAll("[data-tipo]").forEach(d => (d.hidden = d.dataset.tipo !== sel.value));
+                sel.addEventListener("change", actualizar);
+                actualizar();
+            });
         },
         acciones: {
             async publicar(d) {
@@ -661,26 +781,129 @@ ${esExamen ? html`
                 exito("Cambios guardados.");
             },
             async agregarPregunta(d) {
-                let opciones = null, correcta = null;
-                if (d.tipo === "opcion_unica") {
-                    const lineas = (d.opciones || "").split("\n").map(l => l.trim()).filter(Boolean);
-                    const marcadas = lineas.filter(l => l.startsWith("*"));
-                    if (lineas.length < 2) throw new ErrorFen("Escribí al menos 2 opciones, una por línea.");
-                    if (marcadas.length !== 1) throw new ErrorFen("Marcá exactamente UNA opción correcta con * al inicio.");
-                    correcta = lineas.findIndex(l => l.startsWith("*"));
-                    opciones = lineas.map(l => l.replace(/^\*\s*/, ""));
-                }
+                const { opciones, correcta } = leerOpciones(d);
                 await rpc("guardar_pregunta", { p_actividad: id, p_enunciado: d.enunciado, p_tipo: d.tipo, p_puntos: Number(d.puntos) || 1,
                     p_opciones: opciones, p_correcta: correcta, p_aceptadas: d.tipo === "respuesta_corta" ? d.aceptadas : null });
                 exito("Pregunta agregada.");
             },
+            async editarPregunta(d) {
+                const { opciones, correcta } = leerOpciones(d);
+                await rpc("editar_pregunta", { p_pregunta: Number(d.id), p_enunciado: d.enunciado, p_tipo: d.tipo, p_puntos: Number(d.puntos) || 1,
+                    p_opciones: opciones, p_correcta: correcta, p_aceptadas: d.tipo === "respuesta_corta" ? d.aceptadas : null });
+                exito("Pregunta actualizada.");
+            },
+            async moverPregunta(d) { await rpc("mover_pregunta", { p_pregunta: Number(d.id), p_direccion: Number(d.dir) }); },
             async eliminarPregunta(d) { await q(sb.from("preguntas").delete().eq("id", d.id)); exito("Pregunta eliminada."); },
         },
     };
 }
 
+/** Lee las opciones escritas una por línea; la correcta empieza con *. */
+function leerOpciones(d) {
+    if (d.tipo !== "opcion_unica") return { opciones: null, correcta: null };
+    const lineas = (d.opciones || "").split("\n").map(l => l.trim()).filter(Boolean);
+    if (lineas.length < 2) throw new ErrorFen("Escribí al menos 2 opciones, una por línea.");
+    if (lineas.filter(l => l.startsWith("*")).length !== 1) throw new ErrorFen("Marcá exactamente UNA opción correcta con * al inicio.");
+    return { opciones: lineas.map(l => l.replace(/^\*\s*/, "")), correcta: lineas.findIndex(l => l.startsWith("*")) };
+}
+
 /** Compatibilidad con los enlaces viejos #/docente/examen/:id */
 export const examen = ctx => actividad({ ...ctx, query: ctx.query ?? new URLSearchParams() });
+
+// --------------------------------------------------------------- calificar ---
+// Una entrega a la vez: ver el trabajo, poner nota y comentario, y pasar a la siguiente.
+
+export async function calificar({ params }) {
+    const id = Number(params.id);
+    const [en] = await q(sb.from("entregas").select("*, alumno:perfiles(nombre, usuario), actividad:actividades(id, curso_id, titulo, tipo, valor, descripcion, fecha_limite)").eq("id", id));
+    if (!en) throw new ErrorFen("La entrega no existe o no es de tus cursos.");
+    const a = en.actividad;
+    const esExamen = a.tipo === "examen";
+    const [c] = await q(sb.from("cursos").select("id, codigo, nombre").eq("id", a.curso_id));
+    const actividades = await q(sb.from("actividades").select("id").eq("curso_id", a.curso_id));
+    const todas = await q(sb.from("entregas").select("id, user_id, actividad_id, estado, fecha_entrega")
+        .in("actividad_id", actividades.map(x => x.id)).order("fecha_entrega"));
+    // Cola: última entrega de cada estudiante por actividad que sigue pendiente.
+    const ultimas = [...new Map(todas.map(e => [`${e.user_id}-${e.actividad_id}`, e])).values()];
+    const cola = ultimas.filter(e => e.estado === "Pendiente" && e.id !== id).map(e => e.id);
+    const siguiente = cola[0] ?? null;
+    const anteriores = todas.filter(e => e.user_id === en.user_id && e.actividad_id === a.id && e.id !== id).length;
+    const estados = ["Revisado", "Aprobado", "Rechazado", "Pendiente"];
+
+    const guardar = async (d, irSiguiente) => {
+        const cambios = { estado: d.estado || "Revisado", retroalimentacion: nulo(d.retroalimentacion) };
+        if (!esExamen) {
+            const nota = nulo(d.nota);
+            if (nota !== null && (isNaN(nota) || Number(nota) < 0 || Number(nota) > 100)) throw new ErrorFen("La nota debe estar entre 0 y 100.");
+            cambios.nota = nota === null ? null : Number(nota);
+        }
+        await q(sb.from("entregas").update(cambios).eq("id", id));
+        if (irSiguiente && siguiente) { exito("Guardado. Siguiente entrega."); location.hash = `#/docente/calificar/${siguiente}`; return false; }
+        exito(irSiguiente ? "Guardado. ¡No quedan entregas por calificar!" : "Calificación guardada.");
+        if (irSiguiente) { location.hash = `#/docente/curso/${a.curso_id}?tab=entregas`; return false; }
+    };
+
+    return {
+        titulo: `Calificar: ${en.alumno?.nombre}`, seccion: "Calificar",
+        volver: [`docente/curso/${a.curso_id}?tab=entregas`, "Volver a entregas"],
+        html: html`
+<div class="act-encabezado">
+    <span class="avatar-grande">${(en.alumno?.nombre || "?").slice(0, 1).toUpperCase()}</span>
+    <div><h1>${en.alumno?.nombre}</h1><p>@${en.alumno?.usuario} · ${c?.codigo} · ${a.titulo}</p></div>
+    <span class="editor-barra-espacio"></span>
+    <span class="contador-pill ${cola.length ? "amarillo" : ""}">${cola.length ? `${cola.length} más por calificar` : "Es la última por calificar"}</span>
+</div>
+<div class="act-detalle calificar-layout">
+    <section class="act-principal">
+        <div class="tarjeta">
+            <div class="tarjeta-cabecera">
+                ${iconoTipo(a.tipo)}
+                <div><h2>${a.titulo}</h2><p>Enviado el ${fechaHora(en.fecha_entrega)}${en.fuera_de_tiempo ? " · tardía" : ""}${anteriores ? ` · ${anteriores} ${anteriores === 1 ? "envío anterior" : "envíos anteriores"}` : ""}</p></div>
+                ${chipEntrega(en.estado)}
+            </div>
+            <div class="entregas-lista">
+                ${en.nombre_original ? html`
+                <div class="archivo-fila">
+                    <span class="archivo-ic">${icono("file")}</span>
+                    <div><strong>${en.nombre_original}</strong><small>Archivo entregado</small></div>
+                    <button type="button" class="admin-btn" data-accion="descargar" data-ruta="${en.archivo_path}" data-nombre="${en.nombre_original}">${icono("download")} Descargar</button>
+                </div>` : ""}
+                ${en.enlace ? html`<div class="archivo-fila"><span class="archivo-ic">${icono("link")}</span><div>${enlaceExterno(en.enlace)}<small>Repositorio</small></div>
+                    <a class="admin-btn secundario" href="${en.enlace}" target="_blank" rel="noopener noreferrer">Abrir ${icono("flecha")}</a></div>` : ""}
+                ${esExamen ? html`<div class="archivo-fila"><span class="archivo-ic">${icono("eval")}</span><div><strong>Examen corregido automáticamente</strong><small>Nota: ${num(en.nota)}/100</small></div>
+                    <a class="admin-btn secundario" href="#/docente/revisar/${en.id}">Ver respuestas ${icono("flecha")}</a></div>` : ""}
+                ${en.comentario ? html`<div class="retro-box"><span class="det-etiqueta">${icono("info")} Comentario del estudiante</span><p>${en.comentario}</p></div>` : ""}
+                ${!en.nombre_original && !en.enlace && !esExamen ? html`<div class="vacio chico">${icono("alerta")}<p>La entrega no tiene archivo ni enlace.</p></div>` : ""}
+            </div>
+        </div>
+        <div class="tarjeta">
+            <div class="tarjeta-cabecera"><span class="tarjeta-icono">${icono("file")}</span><div><h2>Consigna</h2><p>Valor: ${pct(a.valor)} de la nota final</p></div></div>
+            <div class="tarjeta-cuerpo"><div class="md">${a.descripcion || "Sin consigna."}</div></div>
+        </div>
+    </section>
+    <aside class="tarjeta det-panel">
+        <div class="tarjeta-cabecera"><span class="tarjeta-icono naranja">${icono("award")}</span><div><h2>Calificación</h2><p>${esExamen ? "La nota del examen es automática" : "Nota de 0 a 100"}</p></div></div>
+        <form data-accion="guardar" class="form-limpio" id="form-calificar">
+            ${esExamen ? html`<div class="nota-asignada"><div><span class="det-etiqueta">Nota</span><strong>${num(en.nota)} <small>/ 100</small></strong></div>${icono("award")}</div>`
+                : html`<label>Nota</label><input type="number" name="nota" min="0" max="100" step="0.01" placeholder="0 – 100" value="${en.nota ?? ""}" class="input-nota" autofocus>`}
+            <label>Estado</label>
+            <div class="segmentado">
+                ${estados.map(x => html`<label><input type="radio" name="estado" value="${x}" ${raw((en.estado === "Pendiente" ? "Revisado" : en.estado) === x ? "checked" : "")}><span>${x === "Pendiente" ? "Por revisar" : x}</span></label>`)}
+            </div>
+            <label>Retroalimentación</label>
+            <textarea name="retroalimentacion" rows="6" placeholder="¿Qué hizo bien? ¿Qué puede mejorar?">${en.retroalimentacion}</textarea>
+            <button type="submit" class="admin-btn">${icono("ok")} ${siguiente ? "Guardar y siguiente" : "Guardar y terminar"}</button>
+        </form>
+        <div class="calificar-extra"><button type="button" class="admin-btn secundario" data-accion="soloGuardar">Guardar sin avanzar</button></div>
+    </aside>
+</div>`,
+        acciones: {
+            guardar: d => guardar(d, true),
+            soloGuardar: () => guardar(Object.fromEntries(new FormData(document.getElementById("form-calificar"))), false),
+            descargar: d => descargar(d.ruta, d.nombre).then(() => false),
+        },
+    };
+}
 
 // --------------------------------------------------------- revisar intento ---
 
