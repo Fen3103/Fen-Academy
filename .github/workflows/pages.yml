@@ -26,6 +26,13 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - uses: actions/configure-pages@v6
+      # Agrega ?v=<commit> a los archivos propios para que el navegador no use una versión vieja.
+      - name: Versionar archivos
+        run: |
+          V="${GITHUB_SHA::7}"
+          sed -i -E "s#(from \"\.\.?/[^\"]+\.js)\"#\1?v=$V\"#g" $(find web/js -name '*.js')
+          sed -i -E "s#(href=\"css/style\.css)\"#\1?v=$V\"#; s#(src=\"js/main\.js)\"#\1?v=$V\"#" web/index.html
+          grep -rn "?v=" web/index.html web/js/main.js | head -5
       - uses: actions/upload-pages-artifact@v5
         with:
           path: web
