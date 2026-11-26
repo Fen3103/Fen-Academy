@@ -6,7 +6,7 @@
 //    o al hacer clic en <button data-accion="x">. Si terminan bien, la
 //    pantalla se vuelve a dibujar con los datos nuevos.
 import { sb, configurado, rpc, mensajeDeError } from "./api.js";
-import { html, nombreRol, mensajesHtml, alerta, icono, error as flashError } from "./ui.js";
+import { html, nombreRol, mensajesHtml, alerta, icono, logo, error as flashError } from "./ui.js";
 import * as auth from "./vistas/auth.js";
 import * as est from "./vistas/estudiante.js";
 import * as prof from "./vistas/profesor.js";
@@ -106,7 +106,7 @@ function layout(rutaActual, vista) {
 <div class="dashboard-layout">
     <aside class="sidebar">
         <div>
-            <div class="logo-box"><h2>Fen Academy</h2></div>
+            <div class="logo-box">${logo()}</div>
             <div class="profile-strip">
                 <div class="profile-avatar">${inicial}</div>
                 <div class="profile-info">
@@ -141,7 +141,7 @@ function layout(rutaActual, vista) {
 
 function layoutAuth(vista) {
     document.body.className = "";
-    return html`<div class="auth-page"><div class="auth-box"><h1>Fen Academy</h1>
+    return html`<div class="auth-page"><div class="auth-box">${logo("marca-grande")}
         <div id="mensajes">${mensajesHtml(true)}</div>${vista.html}</div></div>`;
 }
 

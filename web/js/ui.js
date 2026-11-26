@@ -179,3 +179,25 @@ export const etiquetasActividad = a => html`<div class="act-etiquetas">
 
 /** Inicial grande para el bloque de color de un curso. */
 export const bloqueCurso = c => html`<div class="curso-bloque ${claseLenguaje(c.lenguaje)}"><span>${c.codigo}</span></div>`;
+
+// Isotipo: una "F" construida como línea de código, con cursor de terminal que parpadea.
+// Toma los colores del acento elegido (variables CSS).
+export const ISOTIPO = raw(`<svg class="isotipo" viewBox="0 0 48 48" aria-hidden="true">
+    <defs>
+        <linearGradient id="fen-g" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" style="stop-color:var(--acento-2)"/><stop offset="1" style="stop-color:var(--acento-osc)"/>
+        </linearGradient>
+        <linearGradient id="fen-brillo" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#fff" stop-opacity=".35"/><stop offset=".55" stop-color="#fff" stop-opacity="0"/>
+        </linearGradient>
+    </defs>
+    <rect width="48" height="48" rx="14" fill="url(#fen-g)"/>
+    <rect width="48" height="48" rx="14" fill="url(#fen-brillo)"/>
+    <path d="M17 11.5h15.5a3.25 3.25 0 0 1 0 6.5H20.5v4.5h8.5a3.25 3.25 0 0 1 0 6.5h-8.5v6.75a3.25 3.25 0 0 1-6.5 0V14.75A3.25 3.25 0 0 1 17 11.5z" fill="#fff"/>
+    <rect class="isotipo-cursor" x="27" y="33" width="8" height="3.5" rx="1.75" fill="#fff"/>
+</svg>`);
+
+export function logo(extra = "") {
+    return html`<a href="#/" class="marca ${extra}" aria-label="Fen Academy, inicio">${ISOTIPO}
+        <span class="marca-texto"><strong>Fen</strong><small>Academy</small></span></a>`;
+}

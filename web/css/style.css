@@ -2546,3 +2546,26 @@ html[data-tema="claro"] .tarjeta, html[data-tema="claro"] .course-panel, html[da
 html[data-tema="claro"] .auth-box{ box-shadow:0 10px 30px rgba(74,56,32,.15); }
 .apariencia{ padding-bottom:20px; }
 .apariencia > .apariencia-sub, .apariencia > .temas-opciones, .apariencia > .acentos-opciones{ margin-left:20px; margin-right:20px; }
+
+/* Marca: isotipo + nombre */
+.marca{ display:inline-flex; align-items:center; gap:12px; text-decoration:none; color:var(--texto); }
+.isotipo{ width:44px; height:44px; flex:0 0 44px; filter:drop-shadow(0 6px 14px rgba(var(--acento-rgb),.35)); transition:transform .25s; }
+.marca:hover .isotipo{ transform:rotate(-6deg) scale(1.05); }
+.isotipo-cursor{ animation:fen-cursor 1.1s steps(1) infinite; }
+@keyframes fen-cursor{ 50%{ opacity:0; } }
+@media (prefers-reduced-motion:reduce){ .isotipo-cursor{ animation:none; } }
+.marca-texto{ display:flex; flex-direction:column; line-height:1; }
+.marca-texto strong{ font-size:26px; font-weight:800; letter-spacing:-.03em; }
+.marca-texto small{
+    margin-top:4px; font-size:11px; font-weight:700; letter-spacing:.32em; text-transform:uppercase;
+    background:linear-gradient(90deg, var(--acento-2), var(--acento-osc)); -webkit-background-clip:text; background-clip:text; color:transparent;
+}
+.marca-grande{ margin-bottom:18px; }
+.marca-grande .isotipo{ width:56px; height:56px; flex-basis:56px; }
+.marca-grande .marca-texto strong{ font-size:32px; }
+.sidebar.collapsed .marca-texto{ display:none; }
+.sidebar.collapsed .logo-box{ padding:22px 0 18px; display:flex; justify-content:center; }
+.cert-logo{ background:none !important; width:72px !important; height:72px !important; }
+.cert-logo .isotipo{ width:72px; height:72px; filter:none; }
+.cert-logo .isotipo-cursor{ animation:none; }
+.auth-box .marca, .auth-box .marca:hover{ color:var(--texto); text-decoration:none; }

@@ -1,7 +1,7 @@
 // Pantallas del ESTUDIANTE: inicio, matrícula, progreso, curso, actividad y examen.
 import { sb, q, rpc, ErrorFen, subirArchivo, descargar, EXT_ENTREGAS, ultimaPorActividad, resumen, aporte, requisito, mezclar } from "../api.js";
 import { html, raw, num, pct, fecha, fechaHora, vencida, chipEntrega, chipMatricula, chipTipo, tabs, panelTab,
-         enlaceExterno, exito, NOTICIAS, claseLenguaje, icono, iconoTipo, celdaFecha, etiquetasActividad, bloqueCurso, fechaDMA, compararLenguajes } from "../ui.js";
+         enlaceExterno, exito, NOTICIAS, claseLenguaje, icono, iconoTipo, celdaFecha, etiquetasActividad, bloqueCurso, fechaDMA, compararLenguajes, ISOTIPO } from "../ui.js";
 
 const MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
 
@@ -346,7 +346,7 @@ export async function certificado({ perfil, params }) {
 <div class="cert-acciones"><button type="button" class="admin-btn" data-imprimir>${icono("download")} Imprimir o guardar como PDF</button></div>
 <article class="certificado">
     <div class="cert-borde">
-        <div class="cert-logo">F</div>
+        <div class="cert-logo">${ISOTIPO}</div>
         <p class="cert-academia">Fen Academy</p>
         <h1>Certificado de aprobación</h1>
         <p class="cert-texto">Se certifica que</p>
