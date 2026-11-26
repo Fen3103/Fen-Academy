@@ -1,6 +1,7 @@
 // Perfil y ajustes: lo que comparten los tres roles.
 import { sb, q, rpc, ErrorFen } from "../api.js";
 import { html, fecha, nombreRol, exito } from "../ui.js";
+import { selectorApariencia } from "../tema.js";
 
 export async function perfil(ctx) {
     const p = await rpc("mi_perfil");
@@ -66,6 +67,7 @@ export function ajustes({ perfil }) {
     return {
         titulo: "Ajustes",
         html: html`
+${selectorApariencia()}
 <section class="course-panel">
     <div class="panel-title">Tu cuenta</div>
     <div class="course-list">

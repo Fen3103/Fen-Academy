@@ -14,6 +14,9 @@ import * as adm from "./vistas/admin.js";
 import * as cuenta from "./vistas/cuenta.js";
 import * as cal from "./vistas/calendario.js";
 import { renderMarkdown, copiarCodigo } from "./md.js";
+import { aplicarTema, alternarTema, temaEfectivo, elegirTema, elegirAcento } from "./tema.js";
+
+aplicarTema();
 
 const app = document.getElementById("app");
 const E = "estudiante", P = "profesor", A = "admin";
@@ -124,6 +127,7 @@ function layout(rutaActual, vista) {
             </div>
             <div class="topbar-right">
                 ${vista.volver ? html`<a href="#/${vista.volver[0]}" class="topbar-link">← ${vista.volver[1]}</a>` : ""}
+                <button type="button" class="tema-toggle" data-alternar-tema aria-label="Cambiar tema claro u oscuro" title="Cambiar tema">${icono("sun")}${icono("moon")}</button>
                 <strong>${perfil.nombre}</strong>
                 <div class="topbar-avatar">${inicial}</div>
             </div>
@@ -278,6 +282,19 @@ document.addEventListener("click", ev => {
         return confirmarSiHace(boton).then(ok => ok && ejecutar(boton.dataset.accion, boton, { ...boton.dataset }));
     }
     if (ev.target.closest("[data-imprimir]")) return window.print();
+    if (ev.target.closest("[data-alternar-tema]")) return alternarTema();
+    const opTema = ev.target.closest("[data-tema-opcion]");
+    if (opTema) {
+        elegirTema(opTema.dataset.temaOpcion);
+        document.querySelectorAll("[data-tema-opcion]").forEach(b => b.classList.toggle("activa", b === opTema));
+        return;
+    }
+    const opAcento = ev.target.closest("[data-acento-opcion]");
+    if (opAcento) {
+        elegirAcento(opAcento.dataset.acentoOpcion);
+        document.querySelectorAll("[data-acento-opcion]").forEach(b => b.classList.toggle("activa", b === opAcento));
+        return;
+    }
     const copiar = ev.target.closest("[data-copiar]");
     if (copiar) return copiarCodigo(copiar);
     const cerrarA = ev.target.closest("[data-cerrar-alerta]");
