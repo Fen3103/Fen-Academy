@@ -1,0 +1,36 @@
+@model List<ProgresoVM>
+@{
+    ViewData["Title"] = "Progreso";
+}
+<section class="course-panel">
+    <div class="panel-title">Avance por curso</div>
+    <div class="course-list">
+        @foreach (var p in Model)
+        {
+            var r = p.Resumen;
+            <a class="course-link-card" asp-controller="Cursos" asp-action="Ver" asp-route-id="@p.Matricula.CursoId">
+                <div class="course-item">
+                    <div class="progress-head">
+                        <div>
+                            <h3>@p.Matricula.Curso.Codigo · @p.Matricula.Curso.Nombre</h3>
+                            <p>@p.Matricula.Curso.Lenguaje · Nivel @p.Matricula.Curso.Nivel · @Ui.ChipMatricula(p.Matricula.Estado)</p>
+                        </div>
+                        <div class="nota-box">
+                            <strong>@Ui.Num(r.NotaAcumulada)</strong>
+                            <small>nota acumulada / 100</small>
+                        </div>
+                    </div>
+                    <div class="progress-bar"><span style="width: @(r.PorcentajeEntregado)%"></span></div>
+                    <p>@r.Entregadas de @r.Total actividades realizadas (@r.PorcentajeEntregado%) · evaluado @Ui.Pct(r.PorcentajeEvaluado) de @Ui.Pct(r.TotalValor)</p>
+                </div>
+            </a>
+        }
+        @if (Model.Count == 0)
+        {
+            <div class="course-item">
+                <h3>Sin progreso todavía</h3>
+                <p>Matriculate en un curso para empezar a ver tu avance.</p>
+            </div>
+        }
+    </div>
+</section>

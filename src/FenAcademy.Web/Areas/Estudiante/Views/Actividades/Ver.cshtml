@@ -1,0 +1,183 @@
+@model ActividadEstudianteVM
+@{
+    var a = Model.Actividad;
+    ViewData["Title"] = a.Titulo;
+    ViewData["Seccion"] = a.EsExamen ? "Examen" : "Actividad";
+}
+@section TopbarExtra {
+    <a asp-controller="Cursos" asp-action="Ver" asp-route-id="@a.CursoId" asp-route-tab="evaluacion" class="topbar-link">← Volver al curso</a>
+}
+
+<div class="activity-layout">
+
+    <section class="activity-info">
+        <h1>Datos generales</h1>
+
+        <label>@(a.EsExamen ? "Examen" : "Actividad")</label>
+        <input value="@a.Titulo" readonly>
+
+        <label>Curso</label>
+        <input value="@a.Curso.Codigo · @a.Curso.Nombre" readonly>
+
+        <label>Clase</label>
+        <input value="@(a.Clase?.Titulo ?? "Actividad general")" readonly>
+
+        <label>Fecha límite</label>
+        <input value="@Ui.Fecha(a.FechaLimite)@(Model.Vencida ? " (vencida)" : "")" readonly>
+
+        <label>Valor en la nota final</label>
+        <input value="@Ui.Pct(a.Valor)" readonly>
+
+        @if (a.EsExamen)
+        {
+            <label>Preguntas</label>
+            <input value="@Model.CantidadPreguntas preguntas · @Ui.Num(Model.PuntosTotales) puntos" readonly>
+            <label>Duración</label>
+            <input value="@(a.DuracionMinutos is int d ? d + " minutos" : "Sin límite de tiempo")" readonly>
+        }
+
+        <label>Consigna</label>
+        <textarea readonly>@a.Descripcion</textarea>
+    </section>
+
+    <section class="activity-submit">
+    @if (a.EsExamen)
+    {
+        var resultado = Model.Entregas.FirstOrDefault();
+        <h1>Tu examen</h1>
+
+        @if (resultado is not null)
+        {
+            <div class="review-box">
+                <h3>Resultado</h3>
+                <p class="nota-grande">@Ui.Num(resultado.Nota)/100</p>
+                <p>Enviado: @Ui.Fecha(resultado.FechaEntrega) @(resultado.FueraDeTiempo ? "(fuera de tiempo)" : "")</p>
+                @if (resultado.Comentario is not null) { <p>@resultado.Comentario</p> }
+                @if (resultado.Retroalimentacion is not null)
+                {
+                    <div class="feedback-box"><strong>Comentario del profesor:</strong> @resultado.Retroalimentacion</div>
+                }
+            </div>
+
+            @if (Model.Solucion.Count > 0)
+            {
+                var respuestas = resultado.Respuestas.ToDictionary(r => r.PreguntaId);
+                <h2>Corrección</h2>
+                @foreach (var p in Model.Solucion)
+                {
+                    respuestas.TryGetValue(p.Id, out var r);
+                    <div class="pregunta" style="margin:0 0 12px">
+                        <h3>@p.Orden. @p.Enunciado <span class="puntos">(@Ui.Num(p.Puntos) pts)</span>
+                            @if (r?.Correcta == true) { <span class="marca-ok">✓</span> } else { <span class="marca-mal">✗</span> }
+                        </h3>
+                        @if (p.Tipo == TipoPregunta.OpcionUnica)
+                        {
+                            @foreach (var o in p.Opciones)
+                            {
+                                var clase = o.EsCorrecta ? "correcta" : r?.OpcionId == o.Id ? "elegida-mal" : "";
+                                <div class="opcion @clase">@(r?.OpcionId == o.Id ? "● " : "○ ")@o.Texto</div>
+                            }
+                        }
+                        else
+                        {
+                            <p>Tu respuesta: <strong>@(string.IsNullOrEmpty(r?.Texto) ? "(vacía)" : r.Texto)</strong></p>
+                            <p class="muted">Respuesta esperada: @string.Join(" / ", ExamenService.Aceptadas(p))</p>
+                        }
+                    </div>
+                }
+            }
+            else if (!a.MostrarSolucion)
+            {
+                <p class="muted">Tu profesor no habilitó la vista de la corrección para este examen.</p>
+            }
+        }
+        else if (Model.PuedeRendir)
+        {
+            <div class="review-box">
+                <h3>@(Model.Intento is null ? "Listo para empezar" : "Examen en curso")</h3>
+                <p>Tenés <strong>un solo intento</strong>.
+                   @if (a.DuracionMinutos is int d)
+                   {
+                       <text>Al comenzar corre un reloj de <strong>@d minutos</strong>; si se acaba, el examen se envía solo.</text>
+                   }
+                </p>
+            </div>
+            <form asp-action="Comenzar" asp-route-id="@a.Id" method="post" class="upload-box"
+                  data-confirm="@(Model.Intento is null ? "¿Comenzar el examen ahora? Solo tenés un intento." : "")">
+                <button type="submit">@(Model.Intento is null ? "Comenzar examen" : "Continuar examen")</button>
+            </form>
+        }
+        else
+        {
+            <div class="review-box">
+                <h3>Examen no disponible</h3>
+                <p>@Model.MotivoNoRendir</p>
+            </div>
+        }
+    }
+    else
+    {
+        <h1>Tu entrega</h1>
+
+        @if (Model.PuedeEntregar)
+        {
+            <div class="review-box">
+                <h3>@(Model.Entregas.Count > 0 ? "Volver a entregar" : "Entregar")</h3>
+                <p>Subí un archivo (@string.Join(", ", ArchivoService.ExtEntregas) · máx. 16 MB) y/o pegá el enlace a tu repositorio de GitHub.
+                   @if (Model.Vencida) { <br><strong class="texto-alerta">La fecha límite ya pasó: tu entrega quedará marcada como tardía.</strong> }
+                   @if (Model.Entregas.Count > 0) { <br><text>Tu profesor calificará la última entrega.</text> }
+                </p>
+            </div>
+
+            <form asp-action="Entregar" asp-route-id="@a.Id" method="post" enctype="multipart/form-data" class="upload-box">
+                <label>Archivo</label>
+                <input type="file" name="archivo" accept="@ArchivoService.Accept(ArchivoService.ExtEntregas)">
+
+                <label>Enlace al repositorio (opcional)</label>
+                <input type="url" name="enlace" placeholder="https://github.com/tu-usuario/tu-proyecto">
+
+                <label>Comentario para el profesor</label>
+                <textarea name="comentario" placeholder="Opcional"></textarea>
+
+                <button type="submit">Entregar actividad</button>
+            </form>
+        }
+        else
+        {
+            <div class="review-box">
+                <h3>Entrega cerrada</h3>
+                <p>@(Model.Entregas.FirstOrDefault()?.Estado == EstadoEntrega.Aprobado ? "Tu entrega fue aprobada." : "El curso ya fue cerrado por tu profesor.")</p>
+            </div>
+        }
+
+        <h2>Entregas realizadas</h2>
+        @foreach (var e in Model.Entregas)
+        {
+            <div class="delivery-card">
+                <div>
+                    @if (e.NombreOriginal is not null) { <strong>@e.NombreOriginal</strong> }
+                    @if (e.Enlace is not null) { <p><a class="link-repo" href="@e.Enlace" target="_blank" rel="noopener noreferrer">@e.Enlace</a></p> }
+                    <p>Entregado: @Ui.Fecha(e.FechaEntrega) @if (e.FueraDeTiempo) { <span class="texto-alerta">(tardía)</span> }</p>
+                    @if (e.Comentario is not null) { <p>Tu comentario: @e.Comentario</p> }
+                    <p>@Ui.ChipEntrega(e.Estado)
+                       @if (e.Nota is not null) { <span class="grade-chip">Nota: @Ui.Num(e.Nota)/100</span> }
+                    </p>
+                    @if (e.Retroalimentacion is not null)
+                    {
+                        <div class="feedback-box"><strong>Retroalimentación:</strong> @e.Retroalimentacion</div>
+                    }
+                </div>
+                @if (e.Archivo is not null)
+                {
+                    <a class="activity-link" asp-area="" asp-controller="Archivos" asp-action="Entrega" asp-route-id="@e.Id">Descargar</a>
+                }
+            </div>
+        }
+        @if (Model.Entregas.Count == 0)
+        {
+            <div class="empty-delivery">Todavía no entregaste esta actividad.</div>
+        }
+    }
+    </section>
+
+</div>

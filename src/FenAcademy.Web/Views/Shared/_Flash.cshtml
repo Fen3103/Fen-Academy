@@ -1,0 +1,16 @@
+@using System.Text.Json
+@{
+    var mensajes = TempData[FenController.ClaveFlash] is string json
+        ? JsonSerializer.Deserialize<List<string[]>>(json) ?? []
+        : [];
+    var clasePrefijo = ViewData["FlashAuth"] is true ? "msg-" : "alert ";
+}
+@if (mensajes.Count > 0)
+{
+    <div class="@(ViewData["FlashAuth"] is true ? "" : "alerts-box no-side-padding")">
+        @foreach (var m in mensajes)
+        {
+            <div class="@clasePrefijo@m[0]">@m[1]</div>
+        }
+    </div>
+}

@@ -1,0 +1,313 @@
+@model CursoProfesorVM
+@{
+    var c = Model.Curso;
+    ViewData["Title"] = c.Nombre + " (docente)";
+    ViewData["Seccion"] = c.Nombre;
+    var disponible = Math.Round(100 - Model.TotalValor, 2);
+    var siguienteClase = Model.Clases.Count == 0 ? 1 : Model.Clases.Max(x => x.Orden) + 1;
+    var tabs = new List<(string, string, string)>
+    {
+        ("clases", "Clases", "class"),
+        ("evaluacion", "Evaluación", "eval"),
+        ("entregas", Model.PorRevisar > 0 ? $"Entregas ({Model.PorRevisar})" : "Entregas", "list"),
+        ("estudiantes", "Estudiantes", "list"),
+        ("recursos", "Recursos", "folder"),
+    };
+}
+@section TopbarExtra {
+    <a asp-controller="Inicio" asp-action="Index" class="topbar-link">← Mis cursos</a>
+}
+
+<section class="course-banner">
+    <div class="course-banner-overlay">
+        <h1>@c.Nombre</h1>
+        <p>@c.Codigo · @c.Lenguaje · Nivel @c.Nivel · @Model.Estudiantes.Count estudiantes · Vista docente</p>
+    </div>
+</section>
+
+<partial name="_Tabs" model="tabs" />
+
+@* ---------------------------------------------------------------- CLASES *@
+<div id="clases" class="tab-content active-tab">
+    <section class="teacher-grid">
+        <div class="course-panel">
+            <div class="panel-title">Crear clase</div>
+            <form asp-action="CrearClase" asp-route-id="@c.Id" method="post" class="teacher-form">
+                <label>Título</label>
+                <input type="text" name="titulo" required>
+                <label>Número de clase</label>
+                <input type="number" name="orden" min="1" value="@siguienteClase">
+                <label>Descripción / contenido</label>
+                <textarea name="descripcion"></textarea>
+                <button type="submit">Guardar clase</button>
+            </form>
+        </div>
+
+        <div class="course-panel">
+            <div class="panel-title">Clases publicadas</div>
+            <div class="course-list">
+                @foreach (var clase in Model.Clases)
+                {
+                    <div class="course-item item-con-acciones">
+                        <div>
+                            <h3>Clase @clase.Orden: @clase.Titulo</h3>
+                            <p>@clase.Descripcion</p>
+                        </div>
+                        <form asp-action="EliminarClase" asp-route-id="@clase.Id" method="post"
+                              data-confirm="¿Eliminar la clase «@clase.Titulo»? Sus actividades quedarán como generales.">
+                            <button class="admin-btn danger" type="submit">Eliminar</button>
+                        </form>
+                    </div>
+                }
+                @if (Model.Clases.Count == 0)
+                {
+                    <div class="course-item"><h3>Sin clases</h3><p>Creá la primera clase para este curso.</p></div>
+                }
+            </div>
+        </div>
+    </section>
+</div>
+
+@* ------------------------------------------------------------ EVALUACIÓN *@
+<div id="evaluacion" class="tab-content">
+    <section class="teacher-grid">
+        <div class="course-panel">
+            <div class="panel-title">Crear actividad</div>
+            <form asp-action="CrearActividad" asp-route-id="@c.Id" method="post" class="teacher-form">
+                <label>Tipo</label>
+                <select name="tipo">
+                    <option value="Entrega">Entrega de trabajo (archivo o repositorio)</option>
+                    <option value="Examen">Examen (opción única / respuesta corta)</option>
+                </select>
+                <label>Título</label>
+                <input type="text" name="titulo" required>
+                <label>Clase</label>
+                <select name="claseId">
+                    <option value="">Actividad general</option>
+                    @foreach (var clase in Model.Clases)
+                    {
+                        <option value="@clase.Id">Clase @clase.Orden: @clase.Titulo</option>
+                    }
+                </select>
+                <label>Fecha límite</label>
+                <input type="date" name="fechaLimite">
+                <label>Valor % (disponible: @Ui.Pct(disponible))</label>
+                <input type="number" name="valor" min="0" max="@Ui.Num(disponible)" step="0.01" value="0">
+                <label>Consigna</label>
+                <textarea name="descripcion"></textarea>
+                <button type="submit">Guardar actividad</button>
+            </form>
+        </div>
+
+        <div class="course-panel">
+            <div class="panel-title">Desglose de evaluación</div>
+            <div class="evaluation-wrapper">
+                <table class="evaluation-table">
+                    <thead><tr><th>Actividad</th><th>Fecha</th><th>Valor</th><th>Entregas</th><th></th></tr></thead>
+                    <tbody>
+                        @foreach (var a in Model.Actividades)
+                        {
+                            Model.EntregasPorActividad.TryGetValue(a.Id, out var cant);
+                            <tr>
+                                <td>
+                                    <strong>@a.Titulo</strong> @Ui.ChipTipo(a.Tipo)
+                                    @if (a.EsExamen && !a.Publicada) { <span class="estado-chip estado-wait">Borrador</span> }
+                                    <p>@(a.Clase is null ? "General" : $"Clase {a.Clase.Orden}: {a.Clase.Titulo}")</p>
+                                </td>
+                                <td>@Ui.Fecha(a.FechaLimite)</td>
+                                <td>@Ui.Pct(a.Valor)</td>
+                                <td>@cant</td>
+                                <td>
+                                    <div class="resource-card-actions">
+                                        @if (a.EsExamen)
+                                        {
+                                            <a class="admin-btn" asp-controller="Examenes" asp-action="Editar" asp-route-id="@a.Id">Preguntas</a>
+                                        }
+                                        <form asp-action="EliminarActividad" asp-route-id="@a.Id" method="post"
+                                              data-confirm="¿Eliminar «@a.Titulo» y sus @cant entregas? No se puede deshacer.">
+                                            <button class="admin-btn danger" type="submit">Eliminar</button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                        @if (Model.Actividades.Count == 0)
+                        {
+                            <tr><td colspan="5">No hay actividades registradas.</td></tr>
+                        }
+                        <tr class="evaluation-total-row">
+                            <td colspan="2">Total del desglose</td>
+                            <td>@Ui.Num(Model.TotalValor)/100%</td>
+                            <td colspan="2">
+                                @if (Model.TotalValor >= 100) { <span class="estado-chip estado-ok">Completo</span> }
+                                else { <span class="estado-chip estado-lock">Faltan @Ui.Pct(disponible)</span> }
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+</div>
+
+@* -------------------------------------------------------------- ENTREGAS *@
+<div id="entregas" class="tab-content">
+    <section class="course-panel">
+        <div class="panel-title">Entregas de estudiantes</div>
+        <div class="evaluation-wrapper">
+            <table class="evaluation-table">
+                <thead><tr><th>Estudiante</th><th>Actividad</th><th>Trabajo</th><th>Estado</th><th>Calificar</th></tr></thead>
+                <tbody>
+                    @foreach (var e in Model.Entregas)
+                    {
+                        <tr>
+                            <td>@e.Usuario.Nombre</td>
+                            <td>
+                                <strong>@e.Actividad.Titulo</strong> @Ui.ChipTipo(e.Actividad.Tipo)
+                                <p>@Ui.Fecha(e.FechaEntrega) @if (e.FueraDeTiempo) { <span class="texto-alerta">(fuera de tiempo)</span> }</p>
+                                @if (e.Comentario is not null) { <p>💬 @e.Comentario</p> }
+                            </td>
+                            <td>
+                                @if (e.Actividad.EsExamen)
+                                {
+                                    <a class="activity-link" asp-controller="Examenes" asp-action="Revisar" asp-route-id="@e.Id">Ver respuestas</a>
+                                }
+                                @if (e.Archivo is not null)
+                                {
+                                    <a class="activity-link" asp-area="" asp-controller="Archivos" asp-action="Entrega" asp-route-id="@e.Id">@e.NombreOriginal</a>
+                                }
+                                @if (e.Enlace is not null)
+                                {
+                                    <p><a class="link-repo" href="@e.Enlace" target="_blank" rel="noopener noreferrer">@e.Enlace</a></p>
+                                }
+                            </td>
+                            <td>
+                                @Ui.ChipEntrega(e.Estado)
+                                @if (e.Nota is not null) { <br><span class="grade-chip">@Ui.Num(e.Nota)/100</span> }
+                            </td>
+                            <td>
+                                <form asp-action="Calificar" asp-route-id="@e.Id" method="post" class="grade-form">
+                                    <div class="grade-form-row">
+                                        @if (!e.Actividad.EsExamen)
+                                        {
+                                            <input type="number" name="nota" min="0" max="100" step="0.01" placeholder="Nota 0-100" value="@(e.Nota is null ? "" : Ui.Num(e.Nota))">
+                                        }
+                                        <select name="estado">
+                                            @foreach (var est in Enum.GetValues<EstadoEntrega>())
+                                            {
+                                                <option value="@est" selected="@(e.Estado == est)">@est</option>
+                                            }
+                                        </select>
+                                    </div>
+                                    <textarea name="retroalimentacion" placeholder="Retroalimentación para el estudiante">@e.Retroalimentacion</textarea>
+                                    <button class="admin-btn" type="submit">Guardar</button>
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                    @if (Model.Entregas.Count == 0)
+                    {
+                        <tr><td colspan="5">Todavía no hay entregas.</td></tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </section>
+</div>
+
+@* ----------------------------------------------------------- ESTUDIANTES *@
+<div id="estudiantes" class="tab-content">
+    <section class="course-panel">
+        <div class="panel-title">Estudiantes matriculados</div>
+        <p class="muted panel-help">Marcar a un estudiante como <strong>Aprobado</strong> le permite matricular el siguiente nivel de @c.Lenguaje. Aprobado o Reprobado cierra sus entregas y exámenes en este curso.</p>
+        <div class="evaluation-wrapper">
+            <table class="evaluation-table">
+                <thead><tr><th>Estudiante</th><th>Realizadas</th><th>Evaluado</th><th>Nota acumulada</th><th>Estado del curso</th></tr></thead>
+                <tbody>
+                    @foreach (var s in Model.Estudiantes)
+                    {
+                        <tr>
+                            <td><strong>@s.Usuario.Nombre</strong><p>@@@s.Usuario.NombreUsuario</p></td>
+                            <td>@s.Resumen.Entregadas / @s.Resumen.Total</td>
+                            <td>@Ui.Pct(s.Resumen.PorcentajeEvaluado) de @Ui.Pct(s.Resumen.TotalValor)</td>
+                            <td><span class="grade-chip">@Ui.Num(s.Resumen.NotaAcumulada)/100</span></td>
+                            <td>
+                                <form asp-action="CambiarEstado" asp-route-id="@c.Id" method="post" class="inline-admin-form">
+                                    <input type="hidden" name="usuarioId" value="@s.Usuario.Id">
+                                    <select name="estado">
+                                        @foreach (var est in Enum.GetValues<EstadoMatricula>())
+                                        {
+                                            <option value="@est" selected="@(s.Matricula.Estado == est)">@est</option>
+                                        }
+                                    </select>
+                                    <button class="admin-btn" type="submit">Guardar</button>
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                    @if (Model.Estudiantes.Count == 0)
+                    {
+                        <tr><td colspan="5">Todavía no hay estudiantes matriculados.</td></tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </section>
+</div>
+
+@* -------------------------------------------------------------- RECURSOS *@
+<div id="recursos" class="tab-content">
+    <section class="resource-hero">
+        <div class="resource-hero-icon">↓</div>
+        <div>
+            <h1>Recursos</h1>
+            <p>Material de apoyo: archivos, repositorios de ejemplo, videos o documentación.</p>
+        </div>
+    </section>
+
+    <div class="resource-actions">
+        <button type="button" class="resource-add-btn" data-toggle="resource-form-panel">+ Agregar un recurso</button>
+    </div>
+
+    <div id="resource-form-panel" class="resource-form-panel">
+        <div class="resource-form-card">
+            <form asp-action="SubirRecurso" asp-route-id="@c.Id" method="post" enctype="multipart/form-data" class="resource-upload">
+                <h3>Publicar recurso</h3>
+                <label>Título</label>
+                <input name="titulo" type="text" placeholder="Ej: Guía de práctica" required>
+                <label>Archivo (máx. 16 MB)</label>
+                <input name="archivo" type="file" accept="@ArchivoService.Accept(ArchivoService.ExtRecursos)">
+                <label>o enlace</label>
+                <input name="enlace" type="url" placeholder="https://github.com/... o https://youtube.com/...">
+                <button type="submit">Publicar recurso</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="resource-list resource-list-full">
+        @foreach (var r in Model.Recursos)
+        {
+            <div class="resource-card">
+                <div>
+                    <h3>@r.Titulo</h3>
+                    <p>Subido por @r.Usuario.Nombre · @Ui.Fecha(r.FechaSubida)</p>
+                    @if (r.NombreOriginal is not null) { <span>@r.NombreOriginal</span> }
+                    @if (r.Enlace is not null) { <p><a class="link-repo" href="@r.Enlace" target="_blank" rel="noopener noreferrer">@r.Enlace</a></p> }
+                </div>
+                <div class="resource-card-actions">
+                    @if (r.Archivo is not null)
+                    {
+                        <a asp-area="" asp-controller="Archivos" asp-action="Recurso" asp-route-id="@r.Id">Descargar</a>
+                    }
+                    <form asp-action="EliminarRecurso" asp-route-id="@r.Id" method="post" data-confirm="¿Eliminar el recurso «@r.Titulo»?">
+                        <button class="admin-btn danger" type="submit">Eliminar</button>
+                    </form>
+                </div>
+            </div>
+        }
+        @if (Model.Recursos.Count == 0)
+        {
+            <div class="course-item"><h3>Sin recursos</h3><p>Publicá material de apoyo para esta materia.</p></div>
+        }
+    </div>
+</div>

@@ -1,0 +1,101 @@
+@*
+    Layout de todas las páginas con sesión iniciada.
+    El menú lateral cambia según el rol: Estudiante / Profesor / Admin.
+*@
+@{
+    var rol = User.Rol();
+    var area = ViewContext.RouteData.Values["area"]?.ToString() ?? "";
+    var controlador = ViewContext.RouteData.Values["controller"]?.ToString() ?? "";
+    var accion = ViewContext.RouteData.Values["action"]?.ToString() ?? "";
+    var nombre = User.Nombre();
+    var inicial = nombre.Length > 0 ? nombre[..1].ToUpper() : "?";
+
+    // (texto, área, controlador, acción, ¿activo?)
+    var menu = rol switch
+    {
+        Rol.Estudiante => new List<(string, string, string, string, bool)>
+        {
+            ("Inicio", "Estudiante", "Inicio", "Index", area == "Estudiante" && accion == "Index" && controlador == "Inicio"),
+            ("Matrícula", "Estudiante", "Inicio", "Matricula", accion is "Matricula"),
+            ("Progreso", "Estudiante", "Inicio", "Progreso", accion == "Progreso" || controlador is "Cursos" or "Actividades"),
+        },
+        Rol.Profesor => new() { ("Mis cursos", "Profesor", "Inicio", "Index", area == "Profesor") },
+        _ => new()
+        {
+            ("Administración", "Admin", "Inicio", "Index", area == "Admin"),
+            ("Panel docente", "Profesor", "Inicio", "Index", area == "Profesor"),
+        },
+    };
+}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>@ViewData["Title"] | Fen Academy</title>
+    <link rel="stylesheet" href="~/css/style.css" asp-append-version="true">
+</head>
+<body class="dashboard-body rol-@rol.ToString().ToLower()">
+
+<div class="dashboard-layout">
+
+    <aside class="sidebar">
+        <div>
+            <div class="logo-box">
+                <h2>Fen Academy</h2>
+            </div>
+
+            <div class="profile-strip">
+                <div class="profile-avatar">@inicial</div>
+                <div class="profile-info">
+                    <h3>@nombre</h3>
+                    <p><span class="rol-badge rol-badge-@rol.ToString().ToLower()">@Ui.NombreRol(rol)</span></p>
+                </div>
+            </div>
+
+            <nav class="sidebar-nav">
+                @foreach (var (texto, a, c, acc, activo) in menu)
+                {
+                    <a asp-area="@a" asp-controller="@c" asp-action="@acc" class="nav-item @(activo ? "active" : "")">@texto</a>
+                }
+                <a asp-area="" asp-controller="Cuenta" asp-action="Perfil" class="nav-item @(accion == "Perfil" ? "active" : "")">Perfil</a>
+                <a asp-area="" asp-controller="Cuenta" asp-action="Ajustes" class="nav-item @(accion == "Ajustes" ? "active" : "")">Ajustes</a>
+            </nav>
+        </div>
+
+        <form asp-area="" asp-controller="Cuenta" asp-action="Logout" method="post">
+            <button type="submit" class="logout-link">Cerrar sesión</button>
+        </form>
+    </aside>
+
+    <main class="dashboard-main">
+
+        <header class="topbar">
+            <div class="topbar-left">
+                <button class="menu-toggle" type="button" data-toggle-sidebar>☰</button>
+                <span>@(ViewData["Seccion"] ?? ViewData["Title"])</span>
+            </div>
+            <div class="topbar-right">
+                @await RenderSectionAsync("TopbarExtra", required: false)
+                <strong>@nombre</strong>
+                <div class="topbar-avatar">@inicial</div>
+            </div>
+        </header>
+
+        <partial name="_Flash" />
+
+        @RenderBody()
+
+    </main>
+
+</div>
+
+<footer class="footer-bar">
+    <span>© Fen Academy</span>
+    <span>Powered by Fen</span>
+</footer>
+
+<script src="~/js/app.js" asp-append-version="true"></script>
+@await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

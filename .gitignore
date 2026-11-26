@@ -1,0 +1,16 @@
+# .NET
+bin/
+obj/
+*.user
+.vs/
+.vscode/
+TestResults/
+
+# Datos locales: base SQLite y archivos subidos por estudiantes/profesores
+App_Data/
+
+# Versiones anteriores (contienen credenciales viejas y archivos de alumnos): no se publican
+legacy/
+
+# Herramientas locales
+.claude/settings.local.json

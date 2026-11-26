@@ -1,0 +1,127 @@
+@model AdminVM
+@{
+    ViewData["Title"] = "Administración";
+    var lenguajes = Model.Cursos.Select(c => c.Lenguaje).Distinct().ToList();
+}
+<section class="stats-grid stats-grid-3">
+    <div class="stat-card"><span>Estudiantes</span><strong>@Model.Usuarios.Count(u => u.Rol == Rol.Estudiante)</strong></div>
+    <div class="stat-card"><span>Profesores</span><strong>@Model.Profesores.Count</strong></div>
+    <div class="stat-card"><span>Cursos</span><strong>@Model.Cursos.Count</strong></div>
+</section>
+
+<section class="course-panel" id="usuarios">
+    <div class="panel-title">Usuarios y roles</div>
+    <p class="muted panel-help">Las cuentas nuevas se registran como estudiante. Cambiá el rol a <strong>Profesor</strong> para poder asignarle cursos.</p>
+    <div class="evaluation-wrapper">
+        <table class="evaluation-table">
+            <thead><tr><th>Nombre</th><th>Usuario</th><th>Registro</th><th>Rol</th><th></th></tr></thead>
+            <tbody>
+                @foreach (var u in Model.Usuarios)
+                {
+                    var yo = u.Id == Model.UsuarioActualId;
+                    <tr>
+                        <td>@u.Nombre</td>
+                        <td>@@@u.NombreUsuario</td>
+                        <td>@u.FechaRegistro.ToString("yyyy-MM-dd")</td>
+                        <td>
+                            @if (yo)
+                            {
+                                <span class="rol-badge rol-badge-@u.Rol.ToString().ToLower()">@Ui.NombreRol(u.Rol) (vos)</span>
+                            }
+                            else
+                            {
+                                <form asp-action="CambiarRol" asp-route-id="@u.Id" method="post" class="inline-admin-form">
+                                    <select name="rol">
+                                        @foreach (var r in Enum.GetValues<Rol>())
+                                        {
+                                            <option value="@r" selected="@(u.Rol == r)">@Ui.NombreRol(r)</option>
+                                        }
+                                    </select>
+                                    <button class="admin-btn" type="submit">Guardar</button>
+                                </form>
+                            }
+                        </td>
+                        <td>
+                            @if (!yo)
+                            {
+                                <form asp-action="EliminarUsuario" asp-route-id="@u.Id" method="post"
+                                      data-confirm="¿Eliminar a @u.Nombre? Se borran sus matrículas, entregas y exámenes. No se puede deshacer.">
+                                    <button class="admin-btn danger" type="submit">Eliminar</button>
+                                </form>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<section class="course-panel admin-section" id="cursos">
+    <div class="panel-title">Materias (cursos)</div>
+    <p class="muted panel-help">Cada lenguaje es una ruta por niveles: para entrar al nivel 2 hay que aprobar el nivel 1, etc.
+        El código debe ser único (ej. <strong>PY-1</strong>, <strong>JAVA-1</strong>, <strong>JS-1</strong>) para no confundir lenguajes parecidos.</p>
+
+    <div class="admin-course-form">
+        <h3>Crear curso</h3>
+        <form asp-action="CrearCurso" method="post">
+            <input type="text" name="codigo" placeholder="Código (ej: PY-4)" required maxlength="20">
+            <input type="text" name="nombre" placeholder="Nombre del curso" required>
+            <input type="text" name="lenguaje" placeholder="Lenguaje (ej: Python)" required list="lenguajes">
+            <datalist id="lenguajes">
+                @foreach (var l in lenguajes) { <option value="@l"></option> }
+            </datalist>
+            <input type="number" name="nivel" placeholder="Nivel (1, 2, 3...)" min="1" required>
+            <select name="profesorId">
+                <option value="">Sin profesor</option>
+                @foreach (var p in Model.Profesores) { <option value="@p.Id">@p.Nombre</option> }
+            </select>
+            <textarea name="descripcion" placeholder="Descripción"></textarea>
+            <button class="admin-btn" type="submit">Crear curso</button>
+        </form>
+    </div>
+
+    <div class="evaluation-wrapper">
+        <table class="evaluation-table">
+            <thead><tr><th>Código</th><th>Curso</th><th>Lenguaje</th><th>Nivel</th><th>Estudiantes</th><th>Profesor</th><th></th></tr></thead>
+            <tbody>
+                @foreach (var c in Model.Cursos)
+                {
+                    Model.EstudiantesPorCurso.TryGetValue(c.Id, out var n);
+                    <tr>
+                        <td><strong>@c.Codigo</strong></td>
+                        <td><a class="activity-link" asp-area="Profesor" asp-controller="Cursos" asp-action="Ver" asp-route-id="@c.Id">@c.Nombre</a></td>
+                        <td>@c.Lenguaje</td>
+                        <td>@c.Nivel</td>
+                        <td>@n</td>
+                        <td>
+                            <form asp-action="AsignarProfesor" asp-route-id="@c.Id" method="post" class="inline-admin-form">
+                                <select name="profesorId">
+                                    <option value="">Sin profesor</option>
+                                    @foreach (var p in Model.Profesores)
+                                    {
+                                        <option value="@p.Id" selected="@(c.ProfesorId == p.Id)">@p.Nombre</option>
+                                    }
+                                </select>
+                                <button class="admin-btn" type="submit">Guardar</button>
+                            </form>
+                        </td>
+                        <td>
+                            <div class="resource-card-actions">
+                                <a class="admin-btn" asp-action="EditarCurso" asp-route-id="@c.Id">Editar</a>
+                                <form asp-action="EliminarCurso" asp-route-id="@c.Id" method="post"
+                                      data-confirm="¿Eliminar @c.Codigo con todas sus clases, actividades, exámenes y entregas? No se puede deshacer.">
+                                    <button class="admin-btn danger" type="submit">Eliminar</button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                }
+                @if (Model.Cursos.Count == 0)
+                {
+                    <tr><td colspan="7">No hay cursos.</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</section>

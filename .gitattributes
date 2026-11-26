@@ -1,0 +1,6 @@
+* text=auto eol=lf
+*.cs text eol=crlf
+*.cshtml text eol=crlf
+*.csproj text eol=crlf
+*.slnx text eol=crlf
+*.ico binary

@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/FenAcademy.Web/FenAcademy.Web.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/FenAcademy.Tests/FenAcademy.Tests.csproj" />
+  </Folder>
+</Solution>

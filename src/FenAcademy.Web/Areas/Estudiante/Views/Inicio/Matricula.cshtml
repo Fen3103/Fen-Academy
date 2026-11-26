@@ -1,0 +1,67 @@
+@model List<IGrouping<string, FilaMatriculaVM>>
+@{
+    ViewData["Title"] = "Matrícula";
+}
+<section class="student-panel">
+    <div class="panel-title">Matrícula de cursos</div>
+    <p class="muted panel-help">El primer nivel de cada lenguaje está abierto. Para el siguiente nivel tu profesor debe marcarte como <strong>Aprobado</strong> en el anterior.</p>
+
+    <div class="matricula-wrapper">
+        <table class="matricula-table">
+            <thead>
+                <tr><th>Código</th><th>Nombre</th><th>Nivel</th><th>Profesor</th><th>Requisito</th><th>Estado</th><th>✔</th></tr>
+            </thead>
+            <tbody>
+                @foreach (var grupo in Model)
+                {
+                    <tr class="grupo-lenguaje"><td colspan="7">@grupo.Key</td></tr>
+                    @foreach (var f in grupo)
+                    {
+                        var clase = f.Estado is not null ? "fila-matriculada" : f.Bloqueado ? "fila-bloqueada" : "fila-disponible";
+                        <tr class="@clase">
+                            <td>@f.Curso.Codigo</td>
+                            <td>@f.Curso.Nombre</td>
+                            <td>@f.Curso.Nivel</td>
+                            <td>@(f.Curso.Profesor?.Nombre ?? "Por asignar")</td>
+                            <td>@(f.Requisito ?? "--")</td>
+                            <td>
+                                @if (f.Estado is EstadoMatricula e)
+                                {
+                                    @Ui.ChipMatricula(e)
+                                }
+                                else if (f.Bloqueado)
+                                {
+                                    <span class="estado-chip estado-lock">Bloqueado</span>
+                                }
+                                else
+                                {
+                                    <span class="estado-chip estado-open">Disponible</span>
+                                }
+                            </td>
+                            <td>
+                                @if (f.Estado is not null)
+                                {
+                                    <a class="accion-icon accion-check" asp-controller="Cursos" asp-action="Ver" asp-route-id="@f.Curso.Id" title="Entrar al curso">→</a>
+                                }
+                                else if (f.Bloqueado)
+                                {
+                                    <span class="accion-icon accion-lock" title="Requiere aprobar @f.Requisito">🔒</span>
+                                }
+                                else
+                                {
+                                    <form asp-action="Matricular" asp-route-id="@f.Curso.Id" method="post" data-confirm="¿Matricularte en @f.Curso.Nombre?">
+                                        <button type="submit" class="accion-btn" title="Matricularme">+</button>
+                                    </form>
+                                }
+                            </td>
+                        </tr>
+                    }
+                }
+                @if (Model.Count == 0)
+                {
+                    <tr><td colspan="7">Todavía no hay cursos creados.</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</section>

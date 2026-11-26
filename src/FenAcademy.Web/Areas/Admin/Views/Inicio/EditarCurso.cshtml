@@ -1,0 +1,38 @@
+@model Curso
+@{
+    ViewData["Title"] = "Editar " + Model.Codigo;
+    var profesores = (List<Usuario>)ViewBag.Profesores;
+    var lenguajes = (List<string>)ViewBag.Lenguajes;
+}
+@section TopbarExtra {
+    <a asp-action="Index" asp-fragment="cursos" class="topbar-link">← Volver</a>
+}
+
+<section class="course-panel">
+    <div class="panel-title">Editar curso @Model.Codigo</div>
+    <form asp-action="EditarCurso" asp-route-id="@Model.Id" method="post" class="form-fen">
+        <label>Código (único)</label>
+        <input type="text" name="codigo" value="@Model.Codigo" required maxlength="20">
+        <label>Nombre</label>
+        <input type="text" name="nombre" value="@Model.Nombre" required>
+        <label>Lenguaje</label>
+        <input type="text" name="lenguaje" value="@Model.Lenguaje" required list="lenguajes">
+        <datalist id="lenguajes">
+            @foreach (var l in lenguajes) { <option value="@l"></option> }
+        </datalist>
+        <label>Nivel</label>
+        <input type="number" name="nivel" value="@Model.Nivel" min="1" required>
+        <small>Cambiar el nivel o el lenguaje cambia los requisitos de matrícula de los cursos de esa ruta.</small>
+        <label>Profesor</label>
+        <select name="profesorId">
+            <option value="">Sin profesor</option>
+            @foreach (var p in profesores)
+            {
+                <option value="@p.Id" selected="@(Model.ProfesorId == p.Id)">@p.Nombre</option>
+            }
+        </select>
+        <label>Descripción</label>
+        <textarea name="descripcion">@Model.Descripcion</textarea>
+        <button class="admin-btn" type="submit">Guardar cambios</button>
+    </form>
+</section>

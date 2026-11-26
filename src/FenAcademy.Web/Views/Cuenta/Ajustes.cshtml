@@ -1,0 +1,30 @@
+@{
+    ViewData["Title"] = "Ajustes";
+    var rol = User.Rol();
+}
+<section class="course-panel">
+    <div class="panel-title">Tu cuenta</div>
+    <div class="course-list">
+        <div class="course-item">
+            <h3>Rol: @Ui.NombreRol(rol)</h3>
+            @if (rol == Rol.Estudiante)
+            {
+                <p>Podés matricularte en cursos, ver las clases, entregar trabajos (archivo o enlace a tu repositorio de GitHub),
+                   rendir exámenes y seguir tus notas. Para avanzar de nivel, tu profesor tiene que marcarte como <strong>Aprobado</strong>.</p>
+            }
+            else if (rol == Rol.Profesor)
+            {
+                <p>Gestionás los cursos que el administrador te asignó: clases, actividades con su porcentaje, exámenes,
+                   calificaciones, recursos y el estado final de cada estudiante.</p>
+            }
+            else
+            {
+                <p>Administrás usuarios, roles y materias. También podés entrar a cualquier curso desde el panel docente.</p>
+            }
+        </div>
+        <div class="course-item">
+            <h3>Datos personales y contraseña</h3>
+            <p>Se cambian desde <a class="activity-link" asp-action="Perfil">Perfil</a>.</p>
+        </div>
+    </div>
+</section>

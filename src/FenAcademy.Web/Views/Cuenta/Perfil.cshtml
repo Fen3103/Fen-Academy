@@ -1,0 +1,52 @@
+@model Usuario
+@{
+    ViewData["Title"] = "Perfil";
+}
+<section class="profile-hero">
+    <div class="profile-large-avatar">@Model.Nombre[..1].ToUpper()</div>
+    <div>
+        <h1>@Model.Nombre</h1>
+        <p>@Ui.NombreRol(Model.Rol) · @@@Model.NombreUsuario</p>
+    </div>
+</section>
+
+<section class="profile-grid">
+    <article class="course-panel">
+        <div class="panel-title">Datos de cuenta</div>
+        <div class="profile-details">
+            <div><span>Nombre</span><strong>@Model.Nombre</strong></div>
+            <div><span>Usuario</span><strong>@Model.NombreUsuario</strong></div>
+            <div><span>Rol</span><strong>@Ui.NombreRol(Model.Rol)</strong></div>
+            <div><span>Email</span><strong>@(Model.Email ?? "Sin registrar")</strong></div>
+            <div><span>Fecha de nacimiento</span><strong>@(Model.FechaNacimiento?.ToString("yyyy-MM-dd") ?? "Sin registrar")</strong></div>
+            <div><span>Registro</span><strong>@Model.FechaRegistro.ToString("yyyy-MM-dd")</strong></div>
+        </div>
+    </article>
+
+    <article class="course-panel">
+        <div class="panel-title">Editar perfil</div>
+        <form asp-action="Perfil" method="post" class="profile-form">
+            <label for="nombre">Nombre completo</label>
+            <input id="nombre" name="nombre" type="text" value="@Model.Nombre" required>
+
+            <label for="usuario">Usuario</label>
+            <input id="usuario" name="usuario" type="text" value="@Model.NombreUsuario" required>
+
+            <label for="email">Email</label>
+            <input id="email" name="email" type="email" value="@Model.Email" placeholder="correo@ejemplo.com">
+
+            <label for="fechaNacimiento">Fecha de nacimiento</label>
+            <input id="fechaNacimiento" name="fechaNacimiento" type="date" value="@Model.FechaNacimiento?.ToString("yyyy-MM-dd")">
+
+            <div class="form-divider"></div>
+
+            <label for="password">Nueva contraseña</label>
+            <input id="password" name="password" type="password" autocomplete="new-password" minlength="6" placeholder="Dejar en blanco para mantener la actual">
+
+            <label for="confirmar">Confirmar nueva contraseña</label>
+            <input id="confirmar" name="confirmar" type="password" autocomplete="new-password">
+
+            <button type="submit" class="primary-action">Guardar cambios</button>
+        </form>
+    </article>
+</section>

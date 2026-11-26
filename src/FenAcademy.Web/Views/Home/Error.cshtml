@@ -1,0 +1,7 @@
+@{
+    Layout = "_LayoutAuth";
+    ViewData["Title"] = "Error " + ViewData["Codigo"];
+}
+<h2>Error @ViewData["Codigo"]</h2>
+<p>@ViewData["Mensaje"]</p>
+<a class="primary-action error-volver" asp-area="" asp-controller="Home" asp-action="Index">Volver al inicio</a>

@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "fenacademy",
+      "runtimeExecutable": "dotnet",
+      "runtimeArgs": ["run", "--project", "src/FenAcademy.Web", "--no-launch-profile", "--", "--urls", "http://localhost:5000", "--environment", "Development"],
+      "port": 5000
+    }
+  ]
+}

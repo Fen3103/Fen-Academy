@@ -1,0 +1,10 @@
+@* Pestañas de un curso. Modelo: lista de (id, texto, icono). El JS (app.js) muestra el panel con ese id. *@
+@model List<(string Id, string Texto, string Icono)>
+<section class="course-menu-tabs">
+    @for (var i = 0; i < Model.Count; i++)
+    {
+        <button type="button" class="course-menu-tab @(i == 0 ? "active" : "")" data-tab="@Model[i].Id">
+            <span class="tab-icon tab-icon-@Model[i].Icono"></span> @Model[i].Texto
+        </button>
+    }
+</section>
