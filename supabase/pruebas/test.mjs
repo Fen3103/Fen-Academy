@@ -4,7 +4,7 @@ const db = new PGlite();
 // Prueba la migración en un Postgres en memoria (PGlite) con imitaciones de Supabase (auth, storage).
 // Uso: npm test   (desde supabase/pruebas)
 const dir = new URL('../migrations/', import.meta.url);
-const schema = fs.readdirSync(dir).filter(f => f.endsWith('.sql') && !f.includes('quitar_contenido_ejemplo')).sort()
+const schema = fs.readdirSync(dir).filter(f => f.endsWith('.sql') && !f.includes('quitar_contenido_ejemplo') && !f.includes('catalogo_por_lenguaje')).sort()
   .map(f => fs.readFileSync(new URL(f, dir), 'utf8')).join(';\n').replace(/create extension[^;]*;/, '');
 await db.exec(fs.readFileSync(new URL('./stubs.sql', import.meta.url), 'utf8'));
 await db.exec(schema);
@@ -197,6 +197,16 @@ await db.exec(fs.readFileSync(new URL(limpieza, dir), 'utf8'));
 const quedan = (await db.query(`select titulo from clases`)).rows.map(r => r.titulo);
 check(antes > 1 && quedan.length === 1 && quedan[0] === 'Mi clase propia', 'limpieza borra solo el ejemplo: ' + quedan.join(','));
 check((await db.query(`select count(*)::int n from cursos where codigo in ('PY-2','PY-3','JS-1','JS-2')`)).rows[0].n === 4, 'las materias se mantienen');
+
+// Catálogo por lenguaje: agrega los que faltan sin tocar los existentes y se puede volver a correr
+const catalogo = fs.readFileSync(new URL(fs.readdirSync(dir).find(f => f.includes('catalogo_por_lenguaje')), dir), 'utf8');
+const profPy1 = (await db.query(`select profesor_id from cursos where codigo='PY-2'`)).rows[0].profesor_id;
+await db.exec(catalogo);
+await db.exec(catalogo);
+const langs = (await db.query(`select lenguaje, count(*)::int n from cursos where codigo ~ '^(PY|CS|HTML|JAVA|GIT|JS|DB)-[123]$' group by 1 order by 1`)).rows;
+check(langs.length === 7 && langs.every(r => r.n === 3), 'catálogo: 7 lenguajes x 3 niveles: ' + JSON.stringify(langs));
+check((await db.query(`select profesor_id from cursos where codigo='PY-2'`)).rows[0].profesor_id === profPy1, 'catálogo no toca cursos existentes');
+check((await db.query(`select count(*)::int n from cursos where codigo='CS-1' and profesor_id is null`)).rows[0].n === 1, 'cursos nuevos sin profesor');
 
 console.log(`\n${ok} ok, ${fail} fallas`);
 process.exit(fail ? 1 : 0);

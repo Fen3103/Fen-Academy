@@ -1,7 +1,7 @@
 // Pantallas del PROFESOR (y del admin en el "panel docente").
 // La base solo deja ver y modificar los cursos asignados al profesor.
 import { sb, q, rpc, ErrorFen, subirArchivo, descargar, borrarArchivos, EXT_RECURSOS, ultimaPorActividad, resumen } from "../api.js";
-import { html, raw, num, pct, fecha, fechaHora, chipEntrega, chipTipo, tabs, panelTab, enlaceExterno, exito, hoy, claseLenguaje } from "../ui.js";
+import { html, raw, num, pct, fecha, fechaHora, chipEntrega, chipTipo, tabs, panelTab, enlaceExterno, exito, hoy, claseLenguaje, icono } from "../ui.js";
 import { listaRecursos, preguntaCorregida } from "./estudiante.js";
 
 const ESTADOS_ENTREGA = ["Pendiente", "Revisado", "Aprobado", "Rechazado"];
@@ -17,13 +17,11 @@ export async function inicio({ perfil }) {
         .order("lenguaje").order("nivel").order("codigo"));
     // El admin ve todo; el profesor solo los cursos que eligió dar.
     const cursos = esAdmin ? todos : todos.filter(c => c.profesor_id === perfil.id);
-    const libres = esAdmin ? [] : todos.filter(c => !c.profesor_id);
     const ids = cursos.map(c => c.id);
     const pendientes = ids.length ? await q(sb.from("entregas").select("id, actividad:actividades!inner(curso_id)")
         .eq("estado", "Pendiente").in("actividad.curso_id", ids)) : [];
     const porRevisar = id => pendientes.filter(p => p.actividad.curso_id === id).length;
     const estudiantes = cursos.reduce((s, c) => s + (c.matriculas[0]?.count ?? 0), 0);
-    const lenguajes = [...new Set(todos.map(c => c.lenguaje))];
 
     const tarjeta = c => html`
         <a href="#/docente/curso/${c.id}" class="course-link-card">
@@ -60,43 +58,101 @@ export async function inicio({ perfil }) {
     <div class="course-list">
         ${cursos.map(tarjeta)}
         ${cursos.length ? "" : html`<div class="course-item"><h3>Todavía no elegiste cursos</h3>
-            <p>Abajo, en el catálogo, tocá <strong>Voy a dar este curso</strong> en los que quieras enseñar, o creá uno nuevo.</p></div>`}
+            <p>Entrá a <a href="#/catalogo">Cursos para impartir</a> y tocá <strong>Voy a dar este curso</strong> en los que quieras enseñar.</p></div>`}
     </div>
 </section>
-${esAdmin ? "" : html`
-<section class="course-panel admin-section">
+`,
+    };
+}
+
+// ---------------------------------------------------------------- catálogo ---
+
+const ORDEN_LENGUAJES = ["python", "c#", "html y css", "java", "git", "javascript", "bases de datos"];
+const NIVELES = { 1: "Principiante", 2: "Intermedio", 3: "Avanzado" };
+let filtroCatalogo = "todos";   // se conserva al tomar o dejar un curso
+
+export async function catalogo({ perfil }) {
+    const todos = await q(sb.from("cursos").select("*, profesor:perfiles(nombre)").order("nivel").order("codigo"));
+    const grupos = new Map();
+    for (const c of todos) {
+        const k = c.lenguaje.toLowerCase();
+        if (!grupos.has(k)) grupos.set(k, { nombre: c.lenguaje, cursos: [] });
+        grupos.get(k).cursos.push(c);
+    }
+    const pos = k => (ORDEN_LENGUAJES.indexOf(k) + 1) || 99;
+    const lista = [...grupos.entries()].sort(([a], [b]) => pos(a) - pos(b) || a.localeCompare(b));
+    if (!lista.some(([k]) => k === filtroCatalogo)) filtroCatalogo = "todos";
+    const doy = todos.filter(c => c.profesor_id === perfil.id).length;
+
+    const fila = c => {
+        const mio = c.profesor_id === perfil.id;
+        return html`
+        <div class="nivel-fila ${mio ? "es-mio" : ""}">
+            <span class="nivel-badge nivel-${Math.min(c.nivel, 3)}">${NIVELES[c.nivel] || "Nivel " + c.nivel}</span>
+            <div class="nivel-info">
+                <h3>${c.codigo} · ${c.nombre}</h3>
+                ${c.descripcion ? html`<p>${c.descripcion}</p>` : ""}
+            </div>
+            <div class="nivel-accion">
+                ${mio ? html`<span class="chip-estado mio">${icono("ok")} Lo das vos</span>
+                        <a class="admin-btn secundario" href="#/docente/curso/${c.id}">Abrir</a>`
+                : c.profesor_id ? html`<span class="chip-estado ocupado">Lo da ${c.profesor?.nombre ?? "otro profesor"}</span>`
+                : html`<button type="button" class="admin-btn" data-accion="tomar" data-id="${c.id}">Voy a dar este curso</button>`}
+            </div>
+        </div>`;
+    };
+
+    return {
+        titulo: "Cursos para impartir",
+        html: html`
+<div class="hero-dashboard-card hero-docente"><div class="hero-dashboard-text">
+    <h1>Cursos para impartir</h1>
+    <p>Elegí los cursos que vas a dar, de principiante a avanzado. Tus estudiantes solo ven en la matrícula los cursos que tienen profesor.</p>
+</div></div>
+<section class="course-panel">
     <div class="panel-title panel-title-acciones">
-        <span>Catálogo de cursos sin profesor</span>
+        <span>Catálogo · das ${doy} de ${todos.length}</span>
         <button type="button" class="admin-btn" data-toggle="crear-curso">+ Crear curso</button>
     </div>
-    <p class="muted panel-help">Los estudiantes solo ven y pueden matricular los cursos que tienen profesor.
-        Cuando elegís un curso, aparece en su matrícula.</p>
     <div id="crear-curso" class="resource-form-panel"><div class="admin-course-form">
         <h3>Crear curso</h3>
         <form data-accion="crearCurso">
-            <input type="text" name="codigo" placeholder="Código (ej: PY-4, JAVA-1)" required maxlength="20">
+            <input type="text" name="codigo" placeholder="Código (ej: PY-4, CS-1)" required maxlength="20">
             <input type="text" name="nombre" placeholder="Nombre del curso" required>
             <input type="text" name="lenguaje" placeholder="Lenguaje (ej: Python)" required list="lenguajes">
-            <datalist id="lenguajes">${lenguajes.map(l => html`<option value="${l}"></option>`)}</datalist>
-            <input type="number" name="nivel" placeholder="Nivel (1, 2, 3...)" min="1" required>
+            <datalist id="lenguajes">${lista.map(([, g]) => html`<option value="${g.nombre}"></option>`)}</datalist>
+            <input type="number" name="nivel" placeholder="Nivel (1 principiante, 2 intermedio, 3 avanzado)" min="1" required>
             <textarea name="descripcion" placeholder="Descripción"></textarea>
             <button class="admin-btn" type="submit">Crear y dar este curso</button>
         </form>
     </div></div>
-    <div class="course-list">
-        ${libres.map(c => html`
-        <div class="course-item con-imagen">
-            <div class="course-thumb ${claseLenguaje(c.lenguaje)}"></div>
-            <div class="catalogo-info">
-                <h3>${c.codigo} · ${c.nombre}</h3>
-                <p>${c.lenguaje} · Nivel ${c.nivel}</p>
-                <p>${c.descripcion}</p>
-            </div>
-            <button type="button" class="admin-btn" data-accion="tomar" data-id="${c.id}">Voy a dar este curso</button>
-        </div>`)}
-        ${libres.length ? "" : html`<div class="course-item"><h3>No hay cursos libres</h3><p>Todos los cursos ya tienen profesor. Podés crear uno nuevo.</p></div>`}
+    <div class="filtros-lenguaje" role="toolbar" aria-label="Filtrar por lenguaje">
+        <button type="button" data-filtro="todos" class="${filtroCatalogo === "todos" ? "activo" : ""}">Todos</button>
+        ${lista.map(([k, g]) => html`<button type="button" data-filtro="${k}" class="${filtroCatalogo === k ? "activo" : ""}">${g.nombre}</button>`)}
     </div>
-</section>`}`,
+    <div class="catalogo-grupos">
+        ${lista.map(([k, g]) => html`
+        <div class="lenguaje-grupo" data-lenguaje="${k}" ${filtroCatalogo !== "todos" && filtroCatalogo !== k ? raw("hidden") : ""}>
+            <div class="lenguaje-cabecera">
+                <div class="lenguaje-thumb ${claseLenguaje(g.nombre)}"></div>
+                <div>
+                    <h2>${g.nombre}</h2>
+                    <p>${g.cursos.length} ${g.cursos.length === 1 ? "nivel" : "niveles"} · das ${g.cursos.filter(c => c.profesor_id === perfil.id).length}</p>
+                </div>
+            </div>
+            <div class="niveles">${g.cursos.map(fila)}</div>
+        </div>`)}
+        ${lista.length ? "" : html`<div class="course-item"><h3>Todavía no hay cursos</h3><p>Creá el primero con <strong>+ Crear curso</strong>.</p></div>`}
+    </div>
+</section>`,
+        alMontar(raiz) {
+            raiz.querySelectorAll("[data-filtro]").forEach(b => b.addEventListener("click", () => {
+                filtroCatalogo = b.dataset.filtro;
+                raiz.querySelectorAll("[data-filtro]").forEach(x => x.classList.toggle("activo", x === b));
+                raiz.querySelectorAll(".lenguaje-grupo").forEach(g =>
+                    g.hidden = filtroCatalogo !== "todos" && g.dataset.lenguaje !== filtroCatalogo);
+            }));
+        },
         acciones: {
             async tomar(d) { exito(await rpc("tomar_curso", { p_curso: Number(d.id) })); },
             async crearCurso(d) {

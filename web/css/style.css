@@ -1768,3 +1768,70 @@ main.dashboard-main > section, main.dashboard-main > div:not(#mensajes){ animati
 @keyframes subir{ from{ opacity:0; transform:translateY(8px) scale(.98); } to{ opacity:1; transform:none; } }
 @keyframes girar{ to{ transform:rotate(360deg); } }
 @media (prefers-reduced-motion: reduce){ *{ animation:none !important; transition:none !important; } }
+
+/* =========================================================
+   Barra lateral fija: Cerrar sesión siempre a la vista
+   ========================================================= */
+@media(min-width:851px){
+    .sidebar{
+        position:sticky; top:0; align-self:flex-start;
+        height:100vh; overflow-y:auto;
+    }
+}
+
+/* Imágenes de lenguajes sin foto: degradados con su color */
+.lang-csharp { --img:linear-gradient(135deg, #68217a, #9b4dca 55%, #1e1033); }
+.lang-git    { --img:linear-gradient(135deg, #f05033, #b8321c 55%, #2a0f08); }
+.lang-db     { --img:linear-gradient(135deg, #0e7490, #22b8cf 55%, #082f3a); }
+
+/* =========================================================
+   Cursos para impartir (catálogo por lenguaje)
+   ========================================================= */
+.filtros-lenguaje{ display:flex; flex-wrap:wrap; gap:8px; padding:0 18px 16px; }
+.filtros-lenguaje button{
+    background:#151a26; color:#cbd5e1; border:1px solid rgba(255,255,255,.08);
+    border-radius:999px; padding:7px 14px; font:inherit; font-size:13px; font-weight:600; cursor:pointer;
+    transition:background .15s, color .15s, border-color .15s;
+}
+.filtros-lenguaje button:hover{ border-color:rgba(255,123,0,.5); color:#fff; }
+.filtros-lenguaje button.activo{ background:rgba(255,123,0,.15); border-color:#ff7b00; color:#ffb067; }
+
+.catalogo-grupos{ display:flex; flex-direction:column; gap:18px; padding:0 18px 18px; }
+.lenguaje-grupo{ background:#151a26; border:1px solid rgba(255,255,255,.06); border-radius:14px; overflow:hidden; }
+.lenguaje-grupo[hidden]{ display:none; }
+.lenguaje-cabecera{ display:flex; align-items:center; gap:14px; padding:14px 16px; border-bottom:1px solid rgba(255,255,255,.06); }
+.lenguaje-thumb{
+    flex:0 0 56px; height:56px; border-radius:12px;
+    background:linear-gradient(rgba(0,0,0,.05), rgba(0,0,0,.3)), var(--img) center/cover no-repeat;
+}
+.lenguaje-cabecera h2{ margin:0; font-size:18px; color:#fff; }
+.lenguaje-cabecera p{ margin:2px 0 0; font-size:13px; color:#94a3b8; }
+
+.niveles{ display:flex; flex-direction:column; }
+.nivel-fila{
+    display:grid; grid-template-columns:120px 1fr auto; align-items:center; gap:16px;
+    padding:14px 16px; border-top:1px solid rgba(255,255,255,.04);
+}
+.nivel-fila:first-child{ border-top:0; }
+.nivel-fila.es-mio{ background:rgba(34,197,94,.06); }
+.nivel-info{ min-width:0; }
+.nivel-info h3{ margin:0; font-size:15px; color:#fff; }
+.nivel-info p{ margin:3px 0 0; font-size:13px; color:#94a3b8; }
+.nivel-badge{
+    justify-self:start; font-size:12px; font-weight:700; padding:4px 10px; border-radius:999px;
+    background:rgba(148,163,184,.12); color:#cbd5e1;
+}
+.nivel-badge.nivel-1{ background:rgba(34,197,94,.14); color:#4ade80; }
+.nivel-badge.nivel-2{ background:rgba(250,204,21,.14); color:#facc15; }
+.nivel-badge.nivel-3{ background:rgba(239,68,68,.14); color:#f87171; }
+.nivel-accion{ display:flex; align-items:center; gap:10px; justify-content:flex-end; }
+.nivel-accion .admin-btn{ font-size:13px; padding:8px 12px; white-space:nowrap; text-decoration:none; }
+.chip-estado{ display:inline-flex; align-items:center; gap:6px; font-size:13px; font-weight:600; white-space:nowrap; }
+.chip-estado .icono{ width:16px; height:16px; }
+.chip-estado.mio{ color:#4ade80; }
+.chip-estado.ocupado{ color:#94a3b8; }
+
+@media(max-width:700px){
+    .nivel-fila{ grid-template-columns:1fr; gap:8px; }
+    .nivel-accion{ justify-content:flex-start; }
+}

@@ -102,6 +102,9 @@ export function claseLenguaje(lenguaje) {
     if (l.includes("javascript") || l === "js" || l.includes("typescript")) return "lang-javascript";
     if (l.includes("html") || l.includes("css") || l.includes("web")) return "lang-web";
     if (l.includes("java")) return "lang-java";
+    if (l.includes("c#") || l.includes("csharp") || l.includes(".net")) return "lang-csharp";
+    if (l.includes("git")) return "lang-git";
+    if (l.includes("sql") || l.includes("datos") || l.includes("database")) return "lang-db";
     return "lang-otro";
 }
 
@@ -123,6 +126,7 @@ const ICONOS = {
     logout: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5M21 12H9"/>',
     ok: '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4 12 14.01l-3-3"/>',
     alerta: '<circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/>',
+    capas: '<path d="m12 2 10 5-10 5L2 7z"/><path d="m2 17 10 5 10-5"/><path d="m2 12 10 5 10-5"/>',
     cerrar: '<path d="M18 6 6 18M6 6l12 12"/>',
 };
 export const icono = (nombre, clase = "icono") =>
