@@ -325,11 +325,11 @@ ${tabs([{ id: "clases", texto: "Clases", icono: "class" }, { id: "evaluacion", t
                             <td class="centro">${celdaFecha(a.fecha_limite)}</td>
                             <td class="centro"><span class="valor-pill">${pct(a.valor)}</span></td>
                             <td class="centro"><span class="contador-pill">${cant}</span></td>
-                            <td><div class="acciones-fila">
-                                <a class="admin-btn secundario" href="#/docente/actividad/${a.id}">${icono("settings")} Editar</a>
-                                <a class="admin-btn secundario" href="#/docente/actividad/${a.id}?tab=previa" title="Vista previa">${icono("user")}</a>
-                                <button type="button" class="admin-btn danger" data-accion="eliminarActividad" data-id="${a.id}"
-                                    data-confirm="¿Eliminar «${a.titulo}» y sus ${cant} entregas? No se puede deshacer.">Eliminar</button>
+                            <td><div class="acciones-fila compactas">
+                                <a class="admin-btn secundario icono-solo" href="#/docente/actividad/${a.id}" title="Editar" aria-label="Editar ${a.titulo}">${icono("lapiz")}</a>
+                                <a class="admin-btn secundario icono-solo" href="#/docente/actividad/${a.id}?tab=previa" title="Vista previa" aria-label="Vista previa de ${a.titulo}">${icono("ojo")}</a>
+                                <button type="button" class="admin-btn danger icono-solo" data-accion="eliminarActividad" data-id="${a.id}" title="Eliminar" aria-label="Eliminar ${a.titulo}" data-boton="Eliminar"
+                                    data-confirm="¿Eliminar «${a.titulo}» y sus ${cant} entregas? No se puede deshacer.">${icono("papelera")}</button>
                             </div></td></tr>`;
                     })}
                     ${actividades.length ? "" : html`<tr><td colspan="6" class="vacio-celda">${icono("eval")}<br>Todavía no hay actividades. Creá la primera con el formulario.</td></tr>`}

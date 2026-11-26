@@ -2916,3 +2916,13 @@ form.sacudir{ animation:sacudir .35s ease; }
     .curso-card-titulo h3{ font-size:16px; }
     .curso-card p{ font-size:14px; }
 }
+
+/* Acciones de la tabla de evaluación: solo íconos para que la tabla quepa */
+.acciones-fila.compactas{ gap:6px; }
+.acciones-fila.compactas .icono-solo{ width:34px; height:34px; min-width:34px; padding:0; display:grid; place-items:center; }
+.acciones-fila.compactas .icono{ width:16px; height:16px; }
+@media (min-width: 1301px) and (max-width: 1500px){
+    .teacher-grid{ grid-template-columns:300px minmax(0, 1fr) !important; }
+    .act-tabla{ min-width:0; }
+    .act-tabla th, .act-tabla td{ padding:12px 10px; }
+}
