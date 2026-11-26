@@ -1509,7 +1509,8 @@ body{
 .meta-alerta{ color:#fbbf24; font-weight:bold; }
 
 /* Pendientes del estudiante */
-.pending-list{ display:flex; flex-direction:column; gap:10px; padding:0 0 18px; }
+.pending-list{ display:flex; flex-direction:column; gap:10px; padding:18px; }
+.pending-list .muted{ line-height:1.5; }
 .pending-item{
     display:flex; flex-direction:column; gap:3px;
     background:#0f172a; border:1px solid rgba(255,255,255,.06);
@@ -1559,9 +1560,8 @@ body{
 /* =========================================================
    ASP.NET Core: logout como botón, exámenes, enlaces
    ========================================================= */
-.sidebar form{ display:flex; }
-button.logout-link{ flex:1; border:none; cursor:pointer; font:inherit; font-weight:bold; }
-.sidebar.collapsed form{ display:none; }
+button.logout-link{ flex:0 0 auto; border:none; cursor:pointer; font:inherit; font-weight:bold; text-align:center; }
+button.logout-link:hover{ background:#991b1b; }
 
 .estado-exam{ background:#6d28d9; color:#ede9fe; }
 
@@ -1607,3 +1607,20 @@ button.logout-link{ flex:1; border:none; cursor:pointer; font:inherit; font-weig
 .marca-mal{ color:#f87171; font-weight:bold; }
 .respuesta-acciones{ display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; align-items:center; }
 .nota-grande{ font-size:42px; color:#ff8a1c; font-weight:bold; }
+
+/* =========================================================
+   Página estática: botones que antes eran enlaces y chips dentro de entregas
+   ========================================================= */
+button.activity-link{ background:none; border:none; padding:0; font:inherit; font-weight:bold; cursor:pointer; text-align:left; }
+.delivery-card .estado-chip,
+.delivery-card .grade-chip{
+    width:auto; height:auto; display:inline-block; border-radius:999px;
+    font-size:12px; padding:5px 10px; margin-right:6px;
+}
+.delivery-card .estado-ok{ background:#14532d; }
+.delivery-card .estado-open{ background:#1d4ed8; }
+.delivery-card .estado-bad{ background:#7f1d1d; }
+.delivery-card .estado-wait{ background:#92400e; }
+.delivery-card .estado-lock{ background:#4b5563; }
+.delivery-card .grade-chip{ background:#4b5563; border-radius:4px; }
+.delivery-card .texto-alerta{ background:none; width:auto; height:auto; display:inline; font-size:inherit; }
