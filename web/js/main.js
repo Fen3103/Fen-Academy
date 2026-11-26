@@ -83,7 +83,7 @@ async function cargarPerfil() {
     }
 }
 
-function menu(rutaActual) {
+function itemsMenu(rutaActual) {
     const items = {
         estudiante: [["inicio", "Inicio"], ["matricula", "Matrícula"], ["plan", "Plan de estudio"], ["progreso", "Progreso"], ["calendario", "Calendario"]],
         profesor: [["docente", "Mis cursos"], ["catalogo", "Cursos para impartir"], ["calendario", "Calendario"]],
@@ -95,8 +95,23 @@ function menu(rutaActual) {
         return raiz === r;
     };
     const ICONO = { inicio: "home", matricula: "matricula", progreso: "chart", docente: "class", catalogo: "capas", calendario: "calendar", plan: "capas", admin: "shield", perfil: "user", ajustes: "sun" };
+    return { items, activo, ICONO };
+}
+
+function menu(rutaActual) {
+    const { items, activo, ICONO } = itemsMenu(rutaActual);
     return [...items, ["perfil", "Perfil"], ["ajustes", "Ajustes"]]
         .map(([r, t]) => html`<a href="#/${r}" class="nav-item ${activo(r) ? "active" : ""}">${icono(ICONO[r])}<span>${t}</span></a>`);
+}
+
+// Barra inferior (solo celular): las secciones principales y "Más" para abrir el menú.
+const CORTO = { "Plan de estudio": "Plan", "Cursos para impartir": "Impartir", "Mis cursos": "Cursos", "Administración": "Admin", "Panel docente": "Docente" };
+function navInferior(rutaActual) {
+    const { items, activo, ICONO } = itemsMenu(rutaActual);
+    return html`<nav class="nav-inferior" aria-label="Navegación principal">
+        ${items.slice(0, 4).map(([r, t]) => html`<a href="#/${r}" class="${activo(r) ? "active" : ""}">${icono(ICONO[r])}<span>${CORTO[t] || t}</span></a>`)}
+        <button type="button" data-toggle-sidebar>${icono("menu")}<span>Más</span></button>
+    </nav>`;
 }
 
 function layout(rutaActual, vista) {
@@ -123,19 +138,21 @@ function layout(rutaActual, vista) {
         <header class="topbar">
             <div class="topbar-left">
                 <button class="menu-toggle" type="button" data-toggle-sidebar aria-label="Abrir menú">☰</button>
-                <span>${vista.seccion || vista.titulo}</span>
+                <span class="topbar-marca">${logo("marca-mini")}</span>
+                <span class="topbar-titulo">${vista.seccion || vista.titulo}</span>
             </div>
             <div class="topbar-right">
-                ${vista.volver ? html`<a href="#/${vista.volver[0]}" class="topbar-link">← ${vista.volver[1]}</a>` : ""}
+                ${vista.volver ? html`<a href="#/${vista.volver[0]}" class="topbar-link" aria-label="${vista.volver[1]}">←<span> ${vista.volver[1]}</span></a>` : ""}
                 <button type="button" class="tema-toggle" data-alternar-tema aria-label="Cambiar tema claro u oscuro" title="Cambiar tema">${icono("sun")}${icono("moon")}</button>
-                <strong>${perfil.nombre}</strong>
-                <div class="topbar-avatar">${inicial}</div>
+                <strong class="topbar-nombre">${perfil.nombre}</strong>
+                <a href="#/perfil" class="topbar-avatar" aria-label="Perfil">${inicial}</a>
             </div>
         </header>
         <div id="mensajes">${vista.cargando ? "" : mensajesHtml()}</div>
         ${vista.html}
     </main>
 </div>
+${navInferior(rutaActual)}
 <footer class="footer-bar"><span>© ${new Date().getFullYear()} Fen Academy</span><span>Powered by Fen</span></footer>`;
 }
 

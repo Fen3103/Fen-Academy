@@ -2569,3 +2569,102 @@ html[data-tema="claro"] .auth-box{ box-shadow:0 10px 30px rgba(74,56,32,.15); }
 .cert-logo .isotipo{ width:72px; height:72px; filter:none; }
 .cert-logo .isotipo-cursor{ animation:none; }
 .auth-box .marca, .auth-box .marca:hover{ color:var(--texto); text-decoration:none; }
+
+/* =========================================================
+   Celular: barra superior compacta, barra inferior tipo app
+   ========================================================= */
+.nav-inferior, .topbar-marca{ display:none; }
+.marca-mini .isotipo{ width:30px; height:30px; flex-basis:30px; filter:none; }
+.marca-mini .marca-texto{ display:none; }
+.cursos-grid{ grid-template-columns:repeat(auto-fill, minmax(min(280px, 100%), 1fr)); }
+.certificados-grid{ grid-template-columns:repeat(auto-fill, minmax(min(260px, 100%), 1fr)); }
+
+@media(max-width:850px){
+    .dashboard-main{ padding:0 12px calc(86px + env(safe-area-inset-bottom)) !important; }
+    .topbar{
+        position:sticky; top:0; z-index:40; margin:0 -12px 14px !important; padding:10px 14px !important;
+        border-radius:0 !important; flex-wrap:nowrap !important; gap:10px;
+        background:rgba(var(--superficie-rgb),.85) !important; backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
+        border:0 !important; border-bottom:1px solid rgba(var(--tinta-rgb),.08) !important; box-shadow:none !important;
+    }
+    .topbar-left{ flex:1; min-width:0; gap:10px !important; }
+    .topbar .menu-toggle{ display:none !important; }
+    .topbar-marca{ display:inline-flex; }
+    .topbar-titulo{ font-size:17px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .topbar-right{ gap:8px !important; flex:0 0 auto; }
+    .topbar-nombre{ display:none; }
+    .topbar-link{ display:grid; place-items:center; width:38px; height:38px; border-radius:12px; background:rgba(var(--tinta-rgb),.06); font-size:18px; }
+    .topbar-link span{ display:none; }
+    .topbar-avatar{ width:36px !important; height:36px !important; text-decoration:none; }
+    .tema-toggle{ width:36px; height:36px; }
+
+    .nav-inferior{
+        display:flex; position:fixed; left:10px; right:10px; bottom:calc(10px + env(safe-area-inset-bottom)); z-index:50;
+        justify-content:space-around; padding:6px; border-radius:20px;
+        background:rgba(var(--superficie-rgb),.92); backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px);
+        border:1px solid rgba(var(--tinta-rgb),.1); box-shadow:0 10px 30px rgba(0,0,0,.3);
+    }
+    .nav-inferior a, .nav-inferior button{
+        flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; padding:8px 2px; border-radius:14px;
+        color:var(--texto-3); text-decoration:none; font:inherit; font-size:11px; font-weight:600; background:none; border:0; cursor:pointer;
+        transition:color .15s, background .15s;
+    }
+    .nav-inferior .icono{ width:21px; height:21px; }
+    .nav-inferior a.active{ color:var(--acento); background:rgba(var(--acento-rgb),.13); }
+    .footer-bar{ display:none !important; }
+    body.menu-abierto .nav-inferior{ display:none; }
+
+    /* Contenido más compacto */
+    .hero-dashboard-card{ min-height:0 !important; padding:22px 18px !important; border-radius:18px !important; flex-direction:column; align-items:flex-start !important; gap:14px; }
+    .hero-dashboard-text h1, .course-banner-overlay h1{ font-size:26px !important; line-height:1.15; }
+    .hero-dashboard-text p{ font-size:14px; }
+    .course-banner, .course-banner-overlay{ min-height:0 !important; }
+    .course-banner-overlay{ padding:22px 18px !important; }
+    .tarjeta, .course-panel{ border-radius:18px !important; }
+    .tarjeta-cabecera{ padding:14px !important; gap:10px !important; }
+    .tarjeta-cabecera h2{ font-size:16px !important; }
+    .cursos-grid{ padding:12px !important; gap:12px; }
+    .curso-card{ min-width:0; }
+    .main-panels, .course-content-grid, .teacher-grid, .act-detalle, .profile-grid{ gap:14px !important; }
+    .course-menu-tabs{
+        flex-wrap:nowrap !important; overflow-x:auto; gap:6px !important; padding:10px 12px !important; scrollbar-width:none;
+        border-radius:14px; margin-bottom:14px;
+    }
+    .course-menu-tabs::-webkit-scrollbar{ display:none; }
+    .course-menu-tab{ flex:0 0 auto; padding:8px 14px !important; border-radius:999px !important; white-space:nowrap; }
+    .course-menu-tab.active{ background:rgba(var(--acento-rgb),.15) !important; }
+    .act-tabla-wrap{ margin:0 -2px; }
+    .pendiente-fila{ padding:12px 14px !important; }
+    .cal-celda{ min-height:58px; }
+    .sidebar{ width:min(300px, 86vw) !important; border-radius:0 22px 22px 0; }
+    .modal-caja, .confirmar-caja{ width:calc(100vw - 32px) !important; }
+}
+@media(max-width:700px){
+    .act-tabla{ min-width:0 !important; display:block; }
+    .act-tabla thead{ display:none; }
+    .act-tabla tbody{ display:flex; flex-direction:column; gap:10px; padding:12px; }
+    .act-tabla tr{
+        display:grid; grid-template-columns:40px 1fr auto; column-gap:12px; row-gap:8px; align-items:center;
+        padding:14px; border-radius:14px; background:var(--campo); border:1px solid rgba(var(--tinta-rgb),.07);
+    }
+    .act-tabla td{ padding:0 !important; border:0 !important; text-align:left !important; font-size:13px; }
+    .act-tabla td:nth-child(1){ grid-row:1 / 4; align-self:start; }
+    .act-tabla td:nth-child(2){ grid-column:2 / 4; }
+    .act-tabla td:nth-child(3){ grid-column:2; }
+    .act-tabla td:nth-child(4){ grid-column:3; justify-self:end; }
+    .act-tabla td:nth-child(5){ grid-column:2; }
+    .act-tabla td:nth-child(6){ grid-column:3; justify-self:end; }
+    .act-tabla td:nth-child(n+7){ grid-column:2 / 4; }
+    .act-tabla td:empty{ display:none; }
+}
+@media(max-width:700px){
+    .act-tabla tfoot{ display:block; padding:0 12px 14px; }
+    .act-tabla tfoot tr{
+        display:flex !important; flex-wrap:wrap; align-items:center; gap:8px 12px;
+        background:rgba(var(--acento-rgb),.08); border-color:rgba(var(--acento-rgb),.25);
+    }
+    .act-tabla tfoot td{ grid-row:auto !important; grid-column:auto !important; }
+    .act-tabla tfoot td:first-child{ flex:1 1 100%; font-weight:700; }
+    .act-tabla tfoot td:last-child{ margin-left:auto; font-size:18px; }
+}
+@media(max-width:700px){ .act-tabla tfoot td{ background:none !important; } }
