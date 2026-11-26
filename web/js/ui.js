@@ -104,6 +104,7 @@ export function claseLenguaje(lenguaje) {
     if (l.includes("proyecto")) return "lang-proy";
     if (l.includes("python")) return "lang-python";
     if (l.includes("javascript") || l === "js" || l.includes("typescript")) return "lang-javascript";
+    if (l.includes("funciona")) return "lang-red";
     if (l.includes("html") || l.includes("css") || l.includes("web")) return "lang-web";
     if (l.includes("java")) return "lang-java";
     if (l.includes("c#") || l.includes("csharp") || l.includes(".net")) return "lang-csharp";
