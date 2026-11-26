@@ -2668,3 +2668,32 @@ html[data-tema="claro"] .auth-box{ box-shadow:0 10px 30px rgba(74,56,32,.15); }
     .act-tabla tfoot td:last-child{ margin-left:auto; font-size:18px; }
 }
 @media(max-width:700px){ .act-tabla tfoot td{ background:none !important; } }
+
+/* Portadas en tema claro: velo crema sobre la foto y texto oscuro legible */
+html[data-tema="claro"] .hero-dashboard-card{
+    background:
+        linear-gradient(90deg, rgba(251,247,239,.97) 40%, rgba(251,247,239,.7) 70%, rgba(251,247,239,.35)),
+        url('https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=1400&q=80') center/cover no-repeat;
+    border:1px solid rgba(var(--tinta-rgb),.08);
+    box-shadow:0 1px 2px rgba(74,56,32,.06), 0 6px 20px rgba(74,56,32,.06);
+}
+html[data-tema="claro"] .hero-docente{
+    background:
+        linear-gradient(90deg, rgba(251,247,239,.97) 40%, rgba(251,247,239,.7) 70%, rgba(251,247,239,.35)),
+        url('https://images.unsplash.com/photo-1517694712202-14dd9538aa97?auto=format&fit=crop&w=1400&q=80') center/cover no-repeat;
+}
+html[data-tema="claro"] .hero-dashboard-text h1{ color:var(--texto); }
+html[data-tema="claro"] .hero-dashboard-text p{ color:var(--texto-2); }
+html[data-tema="claro"] .profile-hero{
+    background:linear-gradient(120deg, rgba(var(--acento-rgb),.14), var(--superficie) 60%);
+    border:1px solid rgba(var(--tinta-rgb),.08);
+}
+html[data-tema="claro"] .profile-hero h1{ color:var(--texto); }
+html[data-tema="claro"] .profile-hero p{ color:var(--texto-3); }
+@media(max-width:850px){
+    html[data-tema="claro"] .hero-dashboard-card{
+        background:
+            linear-gradient(rgba(251,247,239,.9), rgba(251,247,239,.82)),
+            url('https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=900&q=70') center/cover no-repeat;
+    }
+}
