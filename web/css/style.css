@@ -2162,3 +2162,35 @@ main.dashboard-main > section, main.dashboard-main > div:not(#mensajes){ animati
 .lang-comp   { --img:linear-gradient(135deg, #334155, #64748b 55%, #0f172a); }
 .lang-ed     { --img:linear-gradient(135deg, #4338ca, #818cf8 55%, #1e1b4b); }
 .lang-proy   { --img:linear-gradient(135deg, #c2410c, #fb923c 55%, #431407); }
+
+/* =========================================================
+   Editor de actividad (profesor)
+   ========================================================= */
+.editor-barra{ display:flex; align-items:center; flex-wrap:wrap; gap:10px; margin:18px 0; }
+.editor-barra-espacio{ flex:1; }
+.editor-barra .admin-btn[disabled]{ opacity:.5; cursor:not-allowed; }
+.editor-config{ max-width:820px; }
+.form-fila{ display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+.form-fila > div{ display:flex; flex-direction:column; gap:6px; }
+.form-grupo{ display:flex; flex-direction:column; gap:6px; }
+.form-grupo[hidden]{ display:none; }
+.teacher-form label.check, .form-limpio > label.check{
+    display:flex; align-items:center; gap:10px; text-transform:none; letter-spacing:0;
+    font-size:14px; font-weight:500; color:#e2e8f0; cursor:pointer;
+}
+.teacher-form label.check input{ width:18px; height:18px; accent-color:#ff7b00; }
+.preguntas-lista{ padding:4px 0; }
+.act-enlace{ text-decoration:none; }
+.act-enlace:hover{ color:#ff9a3c; text-decoration:underline; }
+
+.aviso-previa{
+    display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin:0 0 18px; padding:10px 14px; border-radius:10px;
+    background:rgba(59,130,246,.1); border:1px solid rgba(59,130,246,.3); color:#93c5fd; font-size:14px;
+}
+.aviso-previa .icono{ width:16px; height:16px; flex:0 0 16px; }
+.aviso-previa strong{ color:#fbbf24; }
+.previa-preguntas{ padding:6px 0; }
+.previa-nota{ padding:0 18px 14px; margin:0; font-size:13px; }
+.previa-deshabilitada{ opacity:.7; pointer-events:none; }
+
+@media(max-width:600px){ .form-fila{ grid-template-columns:1fr; } }

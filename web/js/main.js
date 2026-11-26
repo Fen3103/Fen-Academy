@@ -27,6 +27,7 @@ const RUTAS = [
     ["docente", prof.inicio, [P, A]],
     ["catalogo", prof.catalogo, [P]],
     ["docente/curso/:id", prof.curso, [P, A]],
+    ["docente/actividad/:id", prof.actividad, [P, A]],
     ["docente/examen/:id", prof.examen, [P, A]],
     ["docente/revisar/:id", prof.revisar, [P, A]],
     ["admin", adm.inicio, [A]],

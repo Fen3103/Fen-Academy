@@ -1,8 +1,9 @@
 // Pantallas del PROFESOR (y del admin en el "panel docente").
 // La base solo deja ver y modificar los cursos asignados al profesor.
-import { sb, q, rpc, ErrorFen, subirArchivo, descargar, borrarArchivos, EXT_RECURSOS, ultimaPorActividad, resumen } from "../api.js";
-import { html, raw, num, pct, fecha, fechaHora, chipEntrega, chipTipo, tabs, panelTab, enlaceExterno, exito, hoy, claseLenguaje, icono, iconoTipo, celdaFecha, etiquetasActividad, compararLenguajes } from "../ui.js";
+import { sb, q, rpc, ErrorFen, subirArchivo, descargar, borrarArchivos, EXT_RECURSOS, EXT_ENTREGAS, ultimaPorActividad, resumen } from "../api.js";
+import { html, raw, num, pct, fecha, fechaHora, chipEntrega, chipTipo, tabs, panelTab, enlaceExterno, exito, hoy, claseLenguaje, icono, iconoTipo, celdaFecha, etiquetasActividad, compararLenguajes, fechaDMA } from "../ui.js";
 import { listaRecursos, preguntaCorregida } from "./estudiante.js";
+const EXT_ENTREGAS_TXT = EXT_ENTREGAS.join(", ") + " · máx. 16 MB";
 
 const ESTADOS_ENTREGA = ["Pendiente", "Revisado", "Aprobado", "Rechazado"];
 const ESTADOS_MATRICULA = ["Cursando", "Aprobado", "Reprobado"];
@@ -290,14 +291,15 @@ ${tabs([{ id: "clases", texto: "Clases", icono: "class" }, { id: "evaluacion", t
                         const cant = entregas.filter(e => e.actividad_id === a.id).length;
                         return html`<tr>
                             <td class="col-tipo">${iconoTipo(a.tipo)}</td>
-                            <td><strong class="act-titulo">${a.titulo}</strong>
+                            <td><a class="act-titulo act-enlace" href="#/docente/actividad/${a.id}">${a.titulo}</a>
                                 ${!a.publicada ? html`<span class="estado-chip estado-wait"><i class="punto"></i>Borrador</span>` : ""}
                                 ${etiquetasActividad(a)}</td>
                             <td class="centro">${celdaFecha(a.fecha_limite)}</td>
                             <td class="centro"><span class="valor-pill">${pct(a.valor)}</span></td>
                             <td class="centro"><span class="contador-pill">${cant}</span></td>
                             <td><div class="acciones-fila">
-                                ${a.tipo === "examen" ? html`<a class="admin-btn secundario" href="#/docente/examen/${a.id}">${icono("eval")} Preguntas</a>` : ""}
+                                <a class="admin-btn secundario" href="#/docente/actividad/${a.id}">${icono("settings")} Editar</a>
+                                <a class="admin-btn secundario" href="#/docente/actividad/${a.id}?tab=previa" title="Vista previa">${icono("user")}</a>
                                 <button type="button" class="admin-btn danger" data-accion="eliminarActividad" data-id="${a.id}"
                                     data-confirm="¿Eliminar «${a.titulo}» y sus ${cant} entregas? No se puede deshacer.">Eliminar</button>
                             </div></td></tr>`;
@@ -404,7 +406,7 @@ ${tabs([{ id: "clases", texto: "Clases", icono: "class" }, { id: "evaluacion", t
                     clase_id: nulo(d.clase_id), fecha_limite: nulo(d.fecha_limite), valor: Number(d.valor) || 0,
                     publicada: !examen,
                 }).select("id"));
-                if (examen) { exito("Examen creado como borrador. Agregá las preguntas y publicalo."); location.hash = `#/docente/examen/${nueva.id}`; return false; }
+                if (examen) { exito("Examen creado como borrador. Agregá las preguntas y publicalo."); location.hash = `#/docente/actividad/${nueva.id}?tab=preguntas`; return false; }
                 exito("Actividad creada.");
             },
             async eliminarActividad(d) {
@@ -444,103 +446,193 @@ ${tabs([{ id: "clases", texto: "Clases", icono: "class" }, { id: "evaluacion", t
     };
 }
 
-// ------------------------------------------------------- editor de examen ---
+// ---------------------------------------------------- editor de actividad ---
+// Sirve para entregas y exámenes: configuración, preguntas (examen), vista previa y resultados.
 
-export async function examen({ params }) {
+export async function actividad({ params, query }) {
     const id = Number(params.id);
-    const [ex] = await q(sb.from("actividades").select("*, curso:cursos(codigo, nombre)").eq("id", id).eq("tipo", "examen"));
-    if (!ex) throw new ErrorFen("El examen no existe o no es de tus cursos.");
-    const [preguntas, intentos, resultados] = await Promise.all([
-        rpc("solucion_examen", { p_actividad: id }),
-        q(sb.from("intentos").select("id", { count: "exact", head: false }).eq("actividad_id", id)),
-        q(sb.from("entregas").select("*, alumno:perfiles(nombre)").eq("actividad_id", id).order("fecha_entrega")),
+    const [ac] = await q(sb.from("actividades").select("*, curso:cursos(codigo, nombre, lenguaje), clase:clases(orden, titulo)").eq("id", id));
+    if (!ac) throw new ErrorFen("La actividad no existe o no es de tus cursos.");
+    const esExamen = ac.tipo === "examen";
+    const [clases, otras, preguntas, intentos, resultados] = await Promise.all([
+        q(sb.from("clases").select("id, orden, titulo").eq("curso_id", ac.curso_id).order("orden")),
+        q(sb.from("actividades").select("id, valor").eq("curso_id", ac.curso_id)).then(l => l.filter(x => x.id !== id)),
+        esExamen ? rpc("solucion_examen", { p_actividad: id }) : [],
+        esExamen ? q(sb.from("intentos").select("id").eq("actividad_id", id)) : [],
+        q(sb.from("entregas").select("*, alumno:perfiles(nombre)").eq("actividad_id", id).order("fecha_entrega", { ascending: false })),
     ]);
+    const lista = preguntas || [];
     const bloqueado = intentos.length > 0;
-    const puntos = (preguntas || []).reduce((s, p) => s + Number(p.puntos), 0);
+    const puntos = lista.reduce((s, x) => s + Number(x.puntos), 0);
+    const maxValor = Math.round((100 - otras.reduce((s, x) => s + Number(x.valor), 0)) * 100) / 100;
+    const tab = query.get("tab") || (esExamen && !lista.length ? "preguntas" : "configuracion");
+    const pendientes = resultados.filter(r => r.estado === "Pendiente").length;
+
+    const pestañas = [
+        { id: "configuracion", texto: "Configuración", icono: "settings" },
+        ...(esExamen ? [{ id: "preguntas", texto: "Preguntas", icono: "eval", contador: lista.length || null }] : []),
+        { id: "previa", texto: "Vista previa", icono: "user" },
+        { id: "resultados", texto: esExamen ? "Resultados" : "Entregas", icono: "inbox", contador: (esExamen ? resultados.length : pendientes) || null },
+    ];
+
+    // --- Vista previa: lo mismo que ve el estudiante, sin poder enviar.
+    const campo = (ic, etiqueta, valor) => html`<div class="det-campo"><span class="det-etiqueta">${icono(ic)} ${etiqueta}</span><div>${valor}</div></div>`;
+    const previa = html`
+    <div class="aviso-previa">${icono("info")} Así lo ven tus estudiantes. ${ac.publicada ? "" : html`<strong>Todavía está oculta: no la ven hasta que la publiques.</strong>`}</div>
+    <div class="act-encabezado">${iconoTipo(ac.tipo)}<div><h1>${ac.titulo}</h1><p>${ac.curso.codigo} · ${ac.curso.nombre}</p></div></div>
+    <div class="act-detalle">
+        <aside class="tarjeta det-panel">
+            <div class="tarjeta-cabecera">
+                <span class="tarjeta-icono">${icono("info")}</span><div><h2>Detalles</h2></div>
+                <span class="contador-pill ${esExamen ? "amarillo" : "azul"}">${esExamen ? "Examen" : "Entrega de archivo"}</span>
+            </div>
+            ${campo("calendar", "Fecha límite", html`<strong>${ac.fecha_limite ? fechaDMA(ac.fecha_limite) + " 23:59" : "Sin fecha límite"}</strong>`)}
+            ${campo("folder", "Clase", html`<span class="etq etq-clase">${ac.clase?.titulo ?? "Actividad general"}</span>`)}
+            ${campo("chart", "Valor en la nota final", html`<span class="valor-pill">${pct(ac.valor)}</span>`)}
+            ${esExamen ? html`${campo("eval", "Preguntas", `${lista.length} preguntas · ${num(puntos)} puntos`)}
+                ${campo("clock", "Duración", ac.duracion_minutos ? ac.duracion_minutos + " minutos" : "Sin límite de tiempo")}` : ""}
+            ${campo("file", "Instrucciones", html`<div class="det-consigna">${ac.descripcion || "Sin instrucciones."}</div>`)}
+        </aside>
+        <section class="act-principal">
+            ${esExamen ? html`
+            <div class="tarjeta">
+                <div class="tarjeta-cabecera"><span class="tarjeta-icono amarillo">${icono("star")}</span>
+                    <div><h2>Examen</h2><p>Un solo intento${ac.duracion_minutos ? ` · ${ac.duracion_minutos} minutos` : ""}</p></div></div>
+                <div class="previa-preguntas">
+                    ${lista.map((x, i) => html`
+                    <div class="pregunta">
+                        <h3>${i + 1}. ${x.enunciado} <span class="puntos">(${num(x.puntos)} ${Number(x.puntos) === 1 ? "punto" : "puntos"})</span></h3>
+                        ${x.tipo === "opcion_unica"
+                            ? x.opciones.map(o => html`<label class="opcion"><input type="radio" disabled name="p${x.id}"><span>${o.texto}</span></label>`)
+                            : html`<input type="text" disabled placeholder="Respuesta del estudiante">`}
+                    </div>`)}
+                    ${lista.length ? html`<p class="muted previa-nota">Al estudiante las preguntas y las opciones le aparecen en orden aleatorio.</p>`
+                        : html`<div class="vacio chico">${icono("eval")}<p>Todavía no hay preguntas.</p></div>`}
+                </div>
+            </div>` : html`
+            <div class="tarjeta">
+                <div class="tarjeta-cabecera"><span class="tarjeta-icono naranja">${icono("upload")}</span>
+                    <div><h2>Entregar</h2><p>Archivo (${EXT_ENTREGAS_TXT}) y/o enlace a GitHub</p></div></div>
+                <div class="form-limpio previa-deshabilitada">
+                    <div class="zona-archivo">${icono("upload")}<span><strong>Elegí un archivo</strong> para subir</span><small class="zona-nombre">Vista previa: no se puede subir</small></div>
+                    <label>Enlace al repositorio (opcional)</label><input type="url" disabled placeholder="https://github.com/tu-usuario/tu-proyecto">
+                    <label>Comentario para el profesor</label><textarea disabled placeholder="Opcional"></textarea>
+                    <button type="button" class="admin-btn" disabled>${icono("upload")} Entregar actividad</button>
+                </div>
+            </div>`}
+        </section>
+    </div>`;
 
     return {
-        titulo: "Examen: " + ex.titulo, seccion: "Editor de examen", volver: [`docente/curso/${ex.curso_id}?tab=evaluacion`, "Volver al curso"],
+        titulo: (esExamen ? "Examen: " : "Actividad: ") + ac.titulo, seccion: esExamen ? "Editar examen" : "Editar actividad",
+        volver: [`docente/curso/${ac.curso_id}?tab=evaluacion`, "Volver al curso"],
         html: html`
-<section class="course-banner"><div class="course-banner-overlay">
-    <h1>${ex.titulo}</h1>
-    <p>${ex.curso.codigo} · ${ex.curso.nombre} · ${pct(ex.valor)} de la nota · ${preguntas.length} preguntas · ${num(puntos)} puntos ·
-       ${ex.publicada ? "Publicado" : "Borrador (oculto)"}</p>
+<section class="course-banner ${claseLenguaje(ac.curso.lenguaje)}"><div class="course-banner-overlay">
+    <h1>${ac.titulo}</h1>
+    <p>${ac.curso.codigo} · ${ac.curso.nombre} · ${esExamen ? "Examen" : "Entrega"} · ${pct(ac.valor)} de la nota
+       ${esExamen ? ` · ${lista.length} preguntas · ${num(puntos)} puntos` : ""}</p>
 </div></section>
 
-<div class="exam-toolbar" style="padding-top:18px">
-    <button type="button" class="admin-btn ${ex.publicada ? "danger" : ""}" data-accion="publicar" data-valor="${ex.publicada ? "" : "1"}">
-        ${ex.publicada ? "Ocultar a estudiantes" : "Publicar examen"}</button>
-    ${bloqueado ? html`<span class="estado-chip estado-wait">${intentos.length} estudiante(s) ya empezaron: las preguntas quedan bloqueadas</span>` : ""}
+<div class="editor-barra">
+    <span class="estado-chip ${ac.publicada ? "estado-ok" : "estado-wait"}"><i class="punto"></i>${ac.publicada ? "Publicada: la ven tus estudiantes" : "Oculta (borrador)"}</span>
+    ${bloqueado ? html`<span class="estado-chip estado-lock"><i class="punto"></i>${intentos.length} ya empezaron: preguntas bloqueadas</span>` : ""}
+    <span class="editor-barra-espacio"></span>
+    <button type="button" class="admin-btn ${ac.publicada ? "secundario" : ""}" data-accion="publicar" data-valor="${ac.publicada ? "" : "1"}"
+        ${raw(!ac.publicada && esExamen && !lista.length ? 'disabled title="Agregá al menos una pregunta"' : "")}>
+        ${ac.publicada ? "Ocultar a estudiantes" : esExamen ? "Publicar examen" : "Publicar actividad"}</button>
 </div>
 
-<section class="teacher-grid">
-    <div class="course-panel">
-        <div class="panel-title">Agregar pregunta</div>
-        ${bloqueado ? html`<p class="muted panel-help">No se pueden agregar ni quitar preguntas porque ya hay intentos.
-            Si necesitás corregir algo, podés ajustar la corrección de cada respuesta desde los resultados.</p>` : html`
-        <form data-accion="agregarPregunta" class="form-fen" id="form-pregunta">
-            <label>Tipo</label>
-            <select name="tipo" id="tipo-pregunta">
-                <option value="opcion_unica">Opción única (una correcta)</option>
-                <option value="respuesta_corta">Respuesta corta</option>
-            </select>
-            <label>Enunciado</label><textarea name="enunciado" required placeholder="¿Qué imprime print(2 ** 3)?"></textarea>
-            <label>Puntos</label><input type="number" name="puntos" min="0.5" step="0.5" value="1">
-            <div data-tipo="opcion_unica">
-                <label>Opciones (una por línea; la correcta empieza con *)</label>
-                <textarea name="opciones" rows="5" placeholder="*8&#10;6&#10;9&#10;23"></textarea>
-                <small>Al estudiante se le muestran en orden aleatorio.</small>
-            </div>
-            <div data-tipo="respuesta_corta" hidden>
-                <label>Respuestas aceptadas (separadas por |)</label>
-                <input type="text" name="aceptadas" placeholder="8|ocho">
-                <small>No distingue mayúsculas, tildes ni espacios extra. Los números se comparan por valor (8 = 8.0).</small>
-            </div>
-            <button class="admin-btn" type="submit">Agregar pregunta</button>
-        </form>`}
-    </div>
-    <div class="course-panel">
+${tabs(pestañas, tab)}
+
+<div ${raw(panelTab("configuracion", tab))}>
+    <div class="course-panel editor-config">
         <div class="panel-title">Configuración</div>
-        <form data-accion="configurar" class="form-fen">
-            <label>Título</label><input type="text" name="titulo" value="${ex.titulo}" required>
-            <label>Instrucciones</label><textarea name="descripcion">${ex.descripcion}</textarea>
-            <label>Fecha límite para comenzar</label><input type="date" name="fecha_limite" value="${ex.fecha_limite ?? ""}">
-            <label>Valor % en la nota final</label><input type="number" name="valor" min="0" max="100" step="0.01" value="${ex.valor}">
-            <label>Duración en minutos (vacío = sin límite)</label><input type="number" name="duracion_minutos" min="1" value="${ex.duracion_minutos ?? ""}">
-            <label class="check"><input type="checkbox" name="mostrar_solucion" value="1" ${raw(ex.mostrar_solucion ? "checked" : "")}>
-                Mostrar la corrección al estudiante después de enviar</label>
-            <button class="admin-btn" type="submit">Guardar configuración</button>
+        <form data-accion="configurar" class="teacher-form form-limpio">
+            <label>Título</label><input type="text" name="titulo" value="${ac.titulo}" required>
+            <label>Clase</label>
+            <select name="clase_id"><option value="">Actividad general</option>
+                ${clases.map(cl => html`<option value="${cl.id}" ${raw(cl.id === ac.clase_id ? "selected" : "")}>Clase ${cl.orden}: ${cl.titulo}</option>`)}</select>
+            <div class="form-fila">
+                <div><label>${esExamen ? "Fecha límite para comenzar" : "Fecha límite"}</label><input type="date" name="fecha_limite" value="${ac.fecha_limite ?? ""}"></div>
+                <div><label>Valor % (máximo ${pct(maxValor)})</label><input type="number" name="valor" min="0" max="${maxValor}" step="0.01" value="${ac.valor}"></div>
+            </div>
+            ${esExamen ? html`
+            <label>Duración en minutos (vacío = sin límite)</label><input type="number" name="duracion_minutos" min="1" value="${ac.duracion_minutos ?? ""}">
+            <label class="check"><input type="checkbox" name="mostrar_solucion" value="1" ${raw(ac.mostrar_solucion ? "checked" : "")}>
+                Mostrar la corrección al estudiante después de enviar</label>` : ""}
+            <label>${esExamen ? "Instrucciones" : "Consigna"}</label><textarea name="descripcion" rows="6">${ac.descripcion}</textarea>
+            <button class="admin-btn" type="submit">${icono("ok")} Guardar cambios</button>
         </form>
     </div>
-</section>
+</div>
 
-<section class="course-panel" style="margin-top:20px">
-    <div class="panel-title">Preguntas</div>
-    ${preguntas.map(p => html`
-    <div class="pregunta">
-        <h3>${p.orden}. ${p.enunciado} <span class="puntos">(${num(p.puntos)} pts · ${p.tipo === "opcion_unica" ? "opción única" : "respuesta corta"})</span></h3>
-        ${p.tipo === "opcion_unica"
-            ? p.opciones.map(o => html`<div class="opcion ${o.id === p.opcion_correcta_id ? "correcta" : ""}">${o.id === p.opcion_correcta_id ? "✓ " : ""}${o.texto}</div>`)
-            : html`<p>Respuestas aceptadas: <strong>${(p.respuestas_aceptadas || "").split("|").filter(Boolean).join(" / ")}</strong></p>`}
-        ${bloqueado ? "" : html`<div class="respuesta-acciones"><button type="button" class="admin-btn danger" data-accion="eliminarPregunta"
-            data-id="${p.id}" data-confirm="¿Eliminar esta pregunta?">Eliminar</button></div>`}
-    </div>`)}
-    ${preguntas.length ? "" : html`<p class="muted panel-help">Todavía no hay preguntas. Agregá al menos una para poder publicar.</p>`}
-</section>
+${esExamen ? html`
+<div ${raw(panelTab("preguntas", tab))}>
+    <section class="teacher-grid">
+        <div class="course-panel">
+            <div class="panel-title">Agregar pregunta</div>
+            ${bloqueado ? html`<p class="muted panel-help">No se pueden agregar ni quitar preguntas porque ya hay intentos.
+                Si necesitás corregir algo, ajustá la corrección de cada respuesta desde Resultados.</p>` : html`
+            <form data-accion="agregarPregunta" class="teacher-form form-limpio" id="form-pregunta">
+                <label>Tipo</label>
+                <select name="tipo" id="tipo-pregunta">
+                    <option value="opcion_unica">Opción única (una correcta)</option>
+                    <option value="respuesta_corta">Respuesta corta</option>
+                </select>
+                <label>Enunciado</label><textarea name="enunciado" required placeholder="¿Qué imprime print(2 ** 3)?"></textarea>
+                <label>Puntos</label><input type="number" name="puntos" min="0.5" step="0.5" value="1">
+                <div data-tipo="opcion_unica" class="form-grupo">
+                    <label>Opciones (una por línea; la correcta empieza con *)</label>
+                    <textarea name="opciones" rows="5" placeholder="*8&#10;6&#10;9&#10;23"></textarea>
+                    <small>Al estudiante se le muestran en orden aleatorio.</small>
+                </div>
+                <div data-tipo="respuesta_corta" class="form-grupo" hidden>
+                    <label>Respuestas aceptadas (separadas por |)</label>
+                    <input type="text" name="aceptadas" placeholder="8|ocho">
+                    <small>No distingue mayúsculas, tildes ni espacios extra. Los números se comparan por valor (8 = 8.0).</small>
+                </div>
+                <button class="admin-btn" type="submit">Agregar pregunta</button>
+            </form>`}
+        </div>
+        <div class="course-panel">
+            <div class="panel-title">Preguntas · ${num(puntos)} puntos</div>
+            <div class="preguntas-lista">
+            ${lista.map(x => html`
+            <div class="pregunta">
+                <h3>${x.orden}. ${x.enunciado} <span class="puntos">(${num(x.puntos)} pts · ${x.tipo === "opcion_unica" ? "opción única" : "respuesta corta"})</span></h3>
+                ${x.tipo === "opcion_unica"
+                    ? x.opciones.map(o => html`<div class="opcion ${o.id === x.opcion_correcta_id ? "correcta" : ""}">${o.id === x.opcion_correcta_id ? "✓ " : ""}${o.texto}</div>`)
+                    : html`<p>Respuestas aceptadas: <strong>${(x.respuestas_aceptadas || "").split("|").filter(Boolean).join(" / ")}</strong></p>`}
+                ${bloqueado ? "" : html`<div class="respuesta-acciones"><button type="button" class="admin-btn danger" data-accion="eliminarPregunta"
+                    data-id="${x.id}" data-confirm="¿Eliminar esta pregunta?">Eliminar</button></div>`}
+            </div>`)}
+            ${lista.length ? "" : html`<div class="vacio chico">${icono("eval")}<p>Todavía no hay preguntas. Agregá al menos una para poder publicar.</p></div>`}
+            </div>
+        </div>
+    </section>
+</div>` : ""}
 
-<section class="course-panel" style="margin-top:20px">
-    <div class="panel-title">Resultados</div>
-    <div class="evaluation-wrapper"><table class="evaluation-table">
-        <thead><tr><th>Estudiante</th><th>Enviado</th><th>Nota</th><th></th></tr></thead>
-        <tbody>
-            ${resultados.map(r => html`<tr><td>${r.alumno?.nombre}</td>
-                <td>${fechaHora(r.fecha_entrega)} ${r.fuera_de_tiempo ? html`<span class="texto-alerta">(fuera de tiempo)</span>` : ""}</td>
-                <td><span class="grade-chip">${num(r.nota)}/100</span></td>
-                <td><a class="activity-link" href="#/docente/revisar/${r.id}">Ver respuestas</a></td></tr>`)}
-            ${resultados.length ? "" : html`<tr><td colspan="4">Nadie envió este examen todavía.</td></tr>`}
-        </tbody>
-    </table></div>
-</section>`,
+<div ${raw(panelTab("previa", tab))}>${previa}</div>
+
+<div ${raw(panelTab("resultados", tab))}>
+    <section class="course-panel">
+        <div class="panel-title">${esExamen ? "Resultados" : "Entregas"}</div>
+        <div class="act-tabla-wrap"><table class="act-tabla">
+            <thead><tr><th>Estudiante</th><th class="centro">Enviado</th><th class="centro">Estado</th><th class="centro">Nota</th><th></th></tr></thead>
+            <tbody>
+                ${resultados.map(r => html`<tr>
+                    <td><strong>${r.alumno?.nombre}</strong>${r.nombre_original ? html`<div class="muted">${r.nombre_original}</div>` : ""}</td>
+                    <td class="centro">${fechaHora(r.fecha_entrega)} ${r.fuera_de_tiempo ? html`<span class="texto-rojo">· tardía</span>` : ""}</td>
+                    <td class="centro">${chipEntrega(r.estado)}</td>
+                    <td class="centro">${r.nota == null ? html`<span class="muted">—</span>` : html`<span class="calif-ok">${num(r.nota)}/100</span>`}</td>
+                    <td><div class="acciones-fila">${esExamen
+                        ? html`<a class="admin-btn secundario" href="#/docente/revisar/${r.id}">Ver respuestas</a>`
+                        : html`<a class="admin-btn secundario" href="#/docente/curso/${ac.curso_id}?tab=entregas">Calificar</a>`}</div></td></tr>`)}
+                ${resultados.length ? "" : html`<tr><td colspan="5" class="vacio-celda">Nadie ${esExamen ? "envió este examen" : "entregó esta actividad"} todavía.</td></tr>`}
+            </tbody>
+        </table></div>
+    </section>
+</div>`,
         alMontar(raiz) {
             const tipo = raiz.querySelector("#tipo-pregunta");
             if (!tipo) return;
@@ -551,34 +643,44 @@ export async function examen({ params }) {
         acciones: {
             async publicar(d) {
                 await q(sb.from("actividades").update({ publicada: !!d.valor }).eq("id", id));
-                exito(d.valor ? "Examen publicado: ya lo ven tus estudiantes." : "Examen oculto.");
+                exito(d.valor ? "Publicada: ya la ven tus estudiantes." : "Oculta: tus estudiantes ya no la ven.");
             },
             async configurar(d) {
-                const dur = nulo(d.duracion_minutos);
-                await q(sb.from("actividades").update({
+                const valor = Number(d.valor) || 0;
+                if (valor < 0 || valor > maxValor) throw new ErrorFen(`El valor debe estar entre 0 y ${pct(maxValor)} (el total del curso no puede pasar de 100%).`);
+                const cambios = {
                     titulo: d.titulo.trim(), descripcion: nulo(d.descripcion), fecha_limite: nulo(d.fecha_limite),
-                    valor: Number(d.valor) || 0, duracion_minutos: dur === null ? null : Number(dur), mostrar_solucion: !!d.mostrar_solucion,
-                }).eq("id", id));
-                exito("Configuración guardada.");
+                    clase_id: nulo(d.clase_id) === null ? null : Number(d.clase_id), valor,
+                };
+                if (esExamen) {
+                    const dur = nulo(d.duracion_minutos);
+                    cambios.duracion_minutos = dur === null ? null : Number(dur);
+                    cambios.mostrar_solucion = !!d.mostrar_solucion;
+                }
+                await q(sb.from("actividades").update(cambios).eq("id", id));
+                exito("Cambios guardados.");
             },
             async agregarPregunta(d) {
-                let lista = null, correcta = null;
+                let opciones = null, correcta = null;
                 if (d.tipo === "opcion_unica") {
                     const lineas = (d.opciones || "").split("\n").map(l => l.trim()).filter(Boolean);
                     const marcadas = lineas.filter(l => l.startsWith("*"));
                     if (lineas.length < 2) throw new ErrorFen("Escribí al menos 2 opciones, una por línea.");
                     if (marcadas.length !== 1) throw new ErrorFen("Marcá exactamente UNA opción correcta con * al inicio.");
                     correcta = lineas.findIndex(l => l.startsWith("*"));
-                    lista = lineas.map(l => l.replace(/^\*\s*/, ""));
+                    opciones = lineas.map(l => l.replace(/^\*\s*/, ""));
                 }
                 await rpc("guardar_pregunta", { p_actividad: id, p_enunciado: d.enunciado, p_tipo: d.tipo, p_puntos: Number(d.puntos) || 1,
-                    p_opciones: lista, p_correcta: correcta, p_aceptadas: d.tipo === "respuesta_corta" ? d.aceptadas : null });
+                    p_opciones: opciones, p_correcta: correcta, p_aceptadas: d.tipo === "respuesta_corta" ? d.aceptadas : null });
                 exito("Pregunta agregada.");
             },
             async eliminarPregunta(d) { await q(sb.from("preguntas").delete().eq("id", d.id)); exito("Pregunta eliminada."); },
         },
     };
 }
+
+/** Compatibilidad con los enlaces viejos #/docente/examen/:id */
+export const examen = ctx => actividad({ ...ctx, query: ctx.query ?? new URLSearchParams() });
 
 // --------------------------------------------------------- revisar intento ---
 
@@ -595,7 +697,7 @@ export async function revisar({ params }) {
         data-accion="corregir" data-id="${r.id}" data-valor="${r.correcta ? "" : "1"}">${r.correcta ? "Marcar como incorrecta" : "Marcar como correcta"}</button></div>` : "";
 
     return {
-        titulo: "Respuestas de " + en.alumno?.nombre, seccion: "Revisión de examen", volver: [`docente/examen/${en.actividad_id}`, "Volver al examen"],
+        titulo: "Respuestas de " + en.alumno?.nombre, seccion: "Revisión de examen", volver: [`docente/actividad/${en.actividad_id}?tab=resultados`, "Volver al examen"],
         html: html`
 <section class="course-panel">
     <div class="panel-title">${en.actividad.titulo} · ${en.alumno?.nombre}</div>
