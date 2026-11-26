@@ -2875,3 +2875,24 @@ form.sacudir{ animation:sacudir .35s ease; }
 .dip-pie{ font-size:.95cqw; margin-top:1.6cqw; }
 .diploma-escena{ overflow:visible; }
 .titulo-card.mayor > .icono{ width:18px; height:18px; color:var(--texto-3); flex:0 0 18px; }
+
+/* Tarjeta de "Mis cursos": foto grande arriba y texto más grande */
+.cursos-grid{ grid-template-columns:repeat(auto-fill, minmax(min(260px, 100%), 1fr)); }
+.curso-card{ flex-direction:column; gap:0; padding:0; border-radius:16px; }
+.curso-card::before{ z-index:1; }
+.curso-card .curso-bloque{
+    flex:none; width:100%; height:140px; border-radius:0; place-items:end start; padding:14px 16px;
+    background:linear-gradient(180deg, rgba(0,0,0,.05) 30%, rgba(0,0,0,.6)), var(--img) center/cover no-repeat;
+}
+.curso-card .curso-bloque span{ font-size:20px; color:#fff; padding:4px 12px; border-radius:10px;
+    background:rgba(0,0,0,.35); backdrop-filter:blur(4px); border:1px solid rgba(255,255,255,.18); }
+.curso-card-cuerpo{ padding:16px 18px 18px; gap:8px; }
+.curso-card-titulo{ align-items:center; }
+.curso-card-titulo h3{ font-size:18px; line-height:1.25; }
+.curso-card-titulo .estado-chip{ font-size:12px; padding:4px 10px; white-space:nowrap; flex:none; }
+.curso-card p{ font-size:15px; }
+.curso-card p .icono{ width:17px; height:17px; flex-basis:17px; }
+.curso-card-pie{ margin-top:6px; padding-top:12px; }
+.ingresar{ font-size:15px; padding:9px 16px; border-radius:10px; }
+.ingresar .icono{ width:16px; height:16px; }
+.pill-pendiente{ font-size:13px; padding:5px 10px; }
