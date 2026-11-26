@@ -203,24 +203,7 @@ export async function progreso({ perfil }) {
     const { actividades, ultimas } = await notasDe(perfil.id, matriculas.map(m => m.curso_id));
     const estadoDe = new Map(matriculas.map(m => [m.curso_id, m.estado]));
     const aprobados = matriculas.filter(m => m.estado === "Aprobado");
-    // Camino recomendado: grupos por lenguaje en orden de prioridad, con sus niveles.
-    const grupos = new Map();
-    for (const c of cursos.filter(c => c.profesor_id || estadoDe.has(c.id))) {
-        const k = c.lenguaje.toLowerCase();
-        if (!grupos.has(k)) grupos.set(k, { nombre: c.lenguaje, cursos: [] });
-        grupos.get(k).cursos.push(c);
-    }
-    const camino = [...grupos.entries()].sort(([a], [b]) => compararLenguajes(a, b)).map(([, g]) => ({ ...g, cursos: g.cursos.sort((a, b) => a.nivel - b.nivel) }));
-    const totalCamino = camino.reduce((s, g) => s + g.cursos.length, 0);
-    const hechosCamino = camino.reduce((s, g) => s + g.cursos.filter(c => estadoDe.get(c.id) === "Aprobado").length, 0);
-    const pctCamino = totalCamino ? Math.round(hechosCamino / totalCamino * 100) : 0;
-    const nodo = c => {
-        const e = estadoDe.get(c.id);
-        const clase = e === "Aprobado" ? "ok" : e === "Cursando" ? "actual" : e === "Reprobado" ? "mal" : "libre";
-        return html`<a class="camino-nodo ${clase}" href="${e ? `#/curso/${c.id}` : "#/matricula"}" title="${c.nombre}">
-            <span class="camino-punto">${e === "Aprobado" ? icono("ok") : c.nivel}</span>
-            <span class="camino-texto"><strong>${c.codigo}</strong><small>${e === "Aprobado" ? "Aprobado" : e === "Cursando" ? "Cursando" : e === "Reprobado" ? "Reprobado" : "Disponible"}</small></span></a>`;
-    };
+    const plan = armarPlan(cursos, estadoDe);
     return {
         titulo: "Progreso",
         html: html`
@@ -249,22 +232,14 @@ export async function progreso({ perfil }) {
     </div>
 </section>
 
-<section class="tarjeta camino-tarjeta">
+<a class="tarjeta camino-tarjeta plan-resumen" href="#/plan">
     <div class="tarjeta-cabecera">
         <span class="tarjeta-icono naranja">${icono("capas")}</span>
-        <div><h2>Tu camino desde cero</h2><p>${hechosCamino} de ${totalCamino} cursos aprobados · orden recomendado</p></div>
-        <span class="contador-pill">${pctCamino}%</span>
+        <div><h2>Plan de estudio</h2><p>${plan.hechos} de ${plan.total} cursos aprobados · ver el plan completo</p></div>
+        <span class="contador-pill">${plan.pct}%</span>
     </div>
-    <div class="camino-barra"><span style="width:${pctCamino}%"></span></div>
-    <div class="camino">
-        ${camino.map((g, i) => html`
-        <div class="camino-grupo">
-            <div class="camino-paso">${i + 1}</div>
-            <div class="camino-info"><h3>${g.nombre}</h3><div class="camino-nodos">${g.cursos.map(nodo)}</div></div>
-        </div>`)}
-        ${camino.length ? "" : html`<div class="vacio chico">${icono("capas")}<p>Todavía no hay cursos abiertos.</p></div>`}
-    </div>
-</section>
+    <div class="camino-barra"><span style="width:${plan.pct}%"></span></div>
+</a>
 
 <section class="tarjeta camino-tarjeta">
     <div class="tarjeta-cabecera">
@@ -278,6 +253,78 @@ export async function progreso({ perfil }) {
             ${icono("award")}<div><strong>${m.curso.codigo} · ${m.curso.nombre}</strong><small>Ver e imprimir certificado</small></div>${icono("flecha")}
         </a>`)}
         ${aprobados.length ? "" : html`<div class="vacio chico">${icono("award")}<p>Cuando apruebes un curso, tu certificado aparece aquí.</p></div>`}
+    </div>
+</section>`,
+    };
+}
+
+// ------------------------------------------------------------ plan de estudio ---
+
+// El plan muestra TODO el currículo en orden recomendado. Los cursos sin profesor
+// aparecen como "Próximamente" (se ven, pero no se pueden abrir ni matricular).
+function armarPlan(cursos, estadoDe) {
+    const grupos = new Map();
+    for (const c of cursos) {
+        const k = c.lenguaje.toLowerCase();
+        if (!grupos.has(k)) grupos.set(k, { nombre: c.lenguaje, cursos: [] });
+        grupos.get(k).cursos.push(c);
+    }
+    const lista = [...grupos.entries()].sort(([a], [b]) => compararLenguajes(a, b))
+        .map(([, g]) => ({ ...g, cursos: g.cursos.sort((a, b) => a.nivel - b.nivel) }));
+    const total = cursos.length;
+    const hechos = cursos.filter(c => estadoDe.get(c.id) === "Aprobado").length;
+    return { lista, total, hechos, pct: total ? Math.round(hechos / total * 100) : 0 };
+}
+
+const NIVEL_TXT = { 1: "Principiante", 2: "Intermedio", 3: "Avanzado" };
+
+function nodoPlan(c, estadoDe) {
+    const e = estadoDe.get(c.id);
+    const abierto = !!c.profesor_id;
+    const [clase, texto] = e === "Aprobado" ? ["ok", "Aprobado"] : e === "Cursando" ? ["actual", "Cursando"]
+        : e === "Reprobado" ? ["mal", "Reprobado"] : abierto ? ["libre", "Abierto · matriculate"] : ["pronto", "Próximamente"];
+    const cuerpo = html`
+        <span class="camino-punto">${e === "Aprobado" ? icono("ok") : abierto || e ? c.nivel : icono("clock")}</span>
+        <span class="camino-texto"><strong>${c.codigo} · ${c.nombre}</strong><small>${NIVEL_TXT[c.nivel] || "Nivel " + c.nivel} · ${texto}</small></span>`;
+    if (e) return html`<a class="camino-nodo ${clase}" href="#/curso/${c.id}" title="${c.descripcion || c.nombre}">${cuerpo}</a>`;
+    if (abierto) return html`<a class="camino-nodo ${clase}" href="#/matricula" title="${c.descripcion || c.nombre}">${cuerpo}</a>`;
+    return html`<div class="camino-nodo ${clase}" title="Todavía no tiene profesor asignado">${cuerpo}</div>`;
+}
+
+export async function plan({ perfil }) {
+    const [matriculas, cursos] = await Promise.all([
+        misMatriculas(perfil.id),
+        q(sb.from("cursos").select("id, codigo, nombre, lenguaje, nivel, descripcion, profesor_id")),
+    ]);
+    const estadoDe = new Map(matriculas.map(m => [m.curso_id, m.estado]));
+    const p = armarPlan(cursos, estadoDe);
+    const abiertos = cursos.filter(c => c.profesor_id).length;
+    return {
+        titulo: "Plan de estudio",
+        html: html`
+<div class="hero-dashboard-card"><div class="hero-dashboard-text">
+    <h1>Plan de estudio</h1>
+    <p>El recorrido completo para aprender a programar desde cero, en el orden recomendado.
+    Los cursos marcados como <strong>Próximamente</strong> se abren cuando un profesor empiece a darlos.</p>
+</div></div>
+<section class="tarjeta camino-tarjeta">
+    <div class="tarjeta-cabecera">
+        <span class="tarjeta-icono naranja">${icono("capas")}</span>
+        <div><h2>Tu avance</h2><p>${p.hechos} de ${p.total} cursos aprobados · ${abiertos} abiertos ahora</p></div>
+        <span class="contador-pill">${p.pct}%</span>
+    </div>
+    <div class="camino-barra"><span style="width:${p.pct}%"></span></div>
+    <div class="cal-leyenda plan-leyenda">
+        <span><i class="hecha"></i>Aprobado</span><span><i class="pendiente"></i>Cursando</span>
+        <span><i class="abierto"></i>Abierto</span><span><i class="borrador"></i>Próximamente</span>
+    </div>
+    <div class="camino">
+        ${p.lista.map((g, i) => html`
+        <div class="camino-grupo">
+            <div class="camino-paso">${i + 1}</div>
+            <div class="camino-info"><h3>${g.nombre}</h3><div class="camino-nodos">${g.cursos.map(c => nodoPlan(c, estadoDe))}</div></div>
+        </div>`)}
+        ${p.lista.length ? "" : html`<div class="vacio chico">${icono("capas")}<p>El plan todavía no tiene cursos.</p></div>`}
     </div>
 </section>`,
     };

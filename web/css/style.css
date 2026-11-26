@@ -2456,3 +2456,12 @@ main.dashboard-main > section, main.dashboard-main > div:not(#mensajes){ animati
     .cert-borde{ padding:28px 14px; }
     .certificado h1{ font-size:24px; } .cert-nombre{ font-size:26px; }
 }
+
+/* Plan de estudio */
+.plan-resumen{ display:block; text-decoration:none; color:inherit; padding-bottom:14px; transition:border-color .15s; }
+.plan-resumen:hover{ border-color:rgba(255,123,0,.45); }
+.plan-leyenda i.abierto{ background:#60a5fa; }
+.camino-nodo.libre .camino-punto{ background:rgba(96,165,250,.18); color:#93c5fd; }
+.camino-nodo.libre{ border-color:rgba(96,165,250,.35); }
+.camino-nodo.pronto{ opacity:.55; border-style:dashed; cursor:default; }
+.camino-nodo.pronto:hover{ border-color:rgba(255,255,255,.08); }

@@ -25,6 +25,7 @@ const RUTAS = [
     ["progreso", est.progreso, [E]],
     ["curso/:id", est.curso, [E]],
     ["certificado/:id", est.certificado, [E]],
+    ["plan", est.plan, [E]],
     ["actividad/:id", est.actividad, [E]],
     ["examen/:id", est.rendir, [E]],
     ["docente", prof.inicio, [P, A]],
@@ -81,7 +82,7 @@ async function cargarPerfil() {
 
 function menu(rutaActual) {
     const items = {
-        estudiante: [["inicio", "Inicio"], ["matricula", "Matrícula"], ["progreso", "Progreso"], ["calendario", "Calendario"]],
+        estudiante: [["inicio", "Inicio"], ["matricula", "Matrícula"], ["plan", "Plan de estudio"], ["progreso", "Progreso"], ["calendario", "Calendario"]],
         profesor: [["docente", "Mis cursos"], ["catalogo", "Cursos para impartir"], ["calendario", "Calendario"]],
         admin: [["admin", "Administración"], ["docente", "Panel docente"]],
     }[perfil.rol];
@@ -90,7 +91,7 @@ function menu(rutaActual) {
         if (r === "progreso") return ["progreso", "curso", "actividad", "examen", "certificado"].includes(raiz);
         return raiz === r;
     };
-    const ICONO = { inicio: "home", matricula: "matricula", progreso: "chart", docente: "class", catalogo: "capas", calendario: "calendar", admin: "shield", perfil: "user", ajustes: "sun" };
+    const ICONO = { inicio: "home", matricula: "matricula", progreso: "chart", docente: "class", catalogo: "capas", calendario: "calendar", plan: "capas", admin: "shield", perfil: "user", ajustes: "sun" };
     return [...items, ["perfil", "Perfil"], ["ajustes", "Ajustes"]]
         .map(([r, t]) => html`<a href="#/${r}" class="nav-item ${activo(r) ? "active" : ""}">${icono(ICONO[r])}<span>${t}</span></a>`);
 }
