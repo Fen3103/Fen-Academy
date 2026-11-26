@@ -15,7 +15,7 @@ import * as cuenta from "./vistas/cuenta.js";
 import * as cal from "./vistas/calendario.js";
 import { renderMarkdown, copiarCodigo } from "./md.js";
 import { mejorarFormularios, validarFormulario, alternarOjo } from "./formularios.js";
-import { aplicarTema, alternarTema, temaEfectivo, elegirTema, elegirAcento } from "./tema.js";
+import { aplicarTema, alternarTema, temaEfectivo, elegirTema, elegirAcento, aparienciaDeCuenta } from "./tema.js";
 
 aplicarTema();
 
@@ -77,7 +77,10 @@ function buscarRuta(ruta) {
 async function cargarPerfil() {
     const { data } = await sb.auth.getSession();
     if (!data.session) { perfil = null; return; }
-    perfil = await rpc("mi_perfil");
+    // getUser() trae los metadatos frescos del servidor (por si se cambiaron en otro dispositivo).
+    const [p, usuario] = await Promise.all([rpc("mi_perfil"), sb.auth.getUser().catch(() => null)]);
+    perfil = p;
+    aparienciaDeCuenta(usuario?.data?.user?.user_metadata);
     if (!perfil) {   // la cuenta fue eliminada por un admin
         await sb.auth.signOut();
         flashError("Tu cuenta ya no existe.");
@@ -384,4 +387,10 @@ document.addEventListener("change", ev => {
     zona.classList.toggle("con-archivo", !!f);
     const n = zona.querySelector(".zona-nombre");
     if (n) n.textContent = f ? `${f.name} · ${(f.size / 1048576).toFixed(1)} MB` : "Ningún archivo seleccionado";
+});
+
+// Al volver a la pestaña, trae la apariencia por si se cambió en otro dispositivo.
+document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState !== "visible" || !perfil) return;
+    sb.auth.getUser().then(r => aparienciaDeCuenta(r?.data?.user?.user_metadata)).catch(() => {});
 });

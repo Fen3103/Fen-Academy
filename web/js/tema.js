@@ -1,6 +1,8 @@
 // Tema (oscuro / claro crema / automático) y color de acento.
-// Es una preferencia de este dispositivo: se guarda en localStorage.
+// Se guarda en este dispositivo (localStorage, para pintar al instante) y en la
+// cuenta (metadatos del usuario en Supabase), así se comparte entre PC y celular.
 import { html } from "./ui.js";
+import { sb } from "./api.js";
 
 export const ACENTOS = [
     ["naranja", "Naranja", "#ff7b00"], ["azul", "Azul", "#3b82f6"], ["violeta", "Violeta", "#8b5cf6"],
@@ -24,8 +26,29 @@ export function aplicarTema() {
     document.querySelector('meta[name="theme-color"]')?.setAttribute("content", raiz.dataset.tema === "claro" ? "#f3ecdf" : "#070a16");
 }
 
-export function elegirTema(t) { guardar("fen-tema", t); aplicarTema(); }
-export function elegirAcento(a) { guardar("fen-acento", a); aplicarTema(); }
+const VALIDOS_TEMA = ["oscuro", "claro", "auto"];
+const validoAcento = a => ACENTOS.some(([id]) => id === a);
+
+function guardarEnCuenta() {
+    sb.auth.getSession().then(({ data }) => {
+        if (!data.session) return;
+        return sb.auth.updateUser({ data: { tema: temaGuardado(), acento: acentoGuardado() } });
+    }).catch(err => console.warn("No se pudo guardar la apariencia en la cuenta", err));
+}
+
+export function elegirTema(t) { guardar("fen-tema", t); aplicarTema(); guardarEnCuenta(); }
+export function elegirAcento(a) { guardar("fen-acento", a); aplicarTema(); guardarEnCuenta(); }
+
+/** Al iniciar sesión: si la cuenta tiene apariencia guardada, se usa la de la cuenta. */
+export function aparienciaDeCuenta(meta) {
+    if (!meta) return;
+    let cambio = false;
+    if (VALIDOS_TEMA.includes(meta.tema) && meta.tema !== temaGuardado()) { guardar("fen-tema", meta.tema); cambio = true; }
+    if (validoAcento(meta.acento) && meta.acento !== acentoGuardado()) { guardar("fen-acento", meta.acento); cambio = true; }
+    if (cambio) aplicarTema();
+    // Cuenta sin apariencia guardada todavía: sube la de este dispositivo.
+    if (!meta.tema && !meta.acento && (temaGuardado() !== "oscuro" || acentoGuardado() !== "naranja")) guardarEnCuenta();
+}
 export function alternarTema() { elegirTema(temaEfectivo() === "claro" ? "oscuro" : "claro"); }
 
 window.matchMedia?.("(prefers-color-scheme: light)").addEventListener?.("change", () => {
@@ -38,7 +61,7 @@ export function selectorApariencia() {
     return html`
 <section class="course-panel apariencia">
     <div class="panel-title">Apariencia</div>
-    <p class="muted panel-help">Se guarda en este dispositivo.</p>
+    <p class="muted panel-help">Se guarda en tu cuenta: la vas a ver igual en la PC y en el celular.</p>
     <h3 class="apariencia-sub">Tema</h3>
     <div class="temas-opciones">
         ${TEMAS.map(([id, txt]) => html`
