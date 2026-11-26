@@ -66,16 +66,17 @@ export function tomarMensajes() { const m = pendientes; pendientes = []; return 
 export function mensajesHtml(auth = false) {
     const m = tomarMensajes();
     if (!m.length) return "";
-    const items = m.map(([t, txt]) => html`<div class="${auth ? "msg-" + t : "alert " + t}">${txt}</div>`);
+    const items = m.map(([t, txt]) => auth ? html`<div class="msg-${t}">${txt}</div>` : alerta(t, txt));
     return auth ? html`${items}` : html`<div class="alerts-box no-side-padding">${items}</div>`;
 }
 
-/** Pestañas de un curso: [{id, texto, icono}]. La activa se recuerda en la URL (?tab=). */
+/** Pestañas de un curso: [{id, texto, icono, contador?}]. La activa se recuerda en la URL (?tab=). */
 export function tabs(lista, activa) {
-    return html`<section class="course-menu-tabs">${lista.map(t => html`
-        <button type="button" class="course-menu-tab ${t.id === activa ? "active" : ""}" data-tab="${t.id}">
-            <span class="tab-icon tab-icon-${t.icono}"></span> ${t.texto}
-        </button>`)}</section>`;
+    return html`<nav class="course-menu-tabs" role="tablist">${lista.map(t => html`
+        <button type="button" role="tab" class="course-menu-tab ${t.id === activa ? "active" : ""}" data-tab="${t.id}"
+                aria-selected="${t.id === activa ? "true" : "false"}">
+            ${icono(t.icono)}<span>${t.texto}</span>${t.contador ? html`<span class="tab-contador">${t.contador}</span>` : ""}
+        </button>`)}</nav>`;
 }
 export const panelTab = (id, activa) => `id="${id}" class="tab-content ${id === activa ? "active-tab" : ""}"`;
 
@@ -103,3 +104,31 @@ export function claseLenguaje(lenguaje) {
     if (l.includes("java")) return "lang-java";
     return "lang-otro";
 }
+
+// ---------------------------------------------------------------- íconos ---
+// Íconos de línea (SVG en el propio código: no dependen de otra página).
+const ICONOS = {
+    class: '<path d="M2 4h6a4 4 0 0 1 4 4v12a3 3 0 0 0-3-3H2z"/><path d="M22 4h-6a4 4 0 0 0-4 4v12a3 3 0 0 1 3-3h7z"/>',
+    eval: '<rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/>',
+    inbox: '<path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>',
+    users: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+    folder: '<path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/>',
+    settings: '<path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/>',
+    home: '<path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/>',
+    matricula: '<rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4M12 16h4M8 11h.01M8 16h.01"/>',
+    chart: '<path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/>',
+    user: '<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
+    sun: '<circle cx="12" cy="12" r="3"/><path d="M12 1v3M12 20v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M1 12h3M20 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"/>',
+    shield: '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>',
+    logout: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5M21 12H9"/>',
+    ok: '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4 12 14.01l-3-3"/>',
+    alerta: '<circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/>',
+    cerrar: '<path d="M18 6 6 18M6 6l12 12"/>',
+};
+export const icono = (nombre, clase = "icono") =>
+    raw(`<svg class="${clase}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONOS[nombre] || ""}</svg>`);
+
+/** Aviso con ícono y botón para cerrarlo (los de éxito se van solos). */
+export const alerta = (tipo, texto) => html`<div class="alert ${tipo}" role="${tipo === "error" ? "alert" : "status"}">
+    ${icono(tipo === "error" ? "alerta" : "ok")}<span>${texto}</span>
+    <button type="button" class="alert-cerrar" data-cerrar-alerta aria-label="Cerrar">${icono("cerrar")}</button></div>`;

@@ -4,7 +4,7 @@ const db = new PGlite();
 // Prueba la migración en un Postgres en memoria (PGlite) con imitaciones de Supabase (auth, storage).
 // Uso: npm test   (desde supabase/pruebas)
 const dir = new URL('../migrations/', import.meta.url);
-const schema = fs.readdirSync(dir).filter(f => f.endsWith('.sql')).sort()
+const schema = fs.readdirSync(dir).filter(f => f.endsWith('.sql') && !f.includes('quitar_contenido_ejemplo')).sort()
   .map(f => fs.readFileSync(new URL(f, dir), 'utf8')).join(';\n').replace(/create extension[^;]*;/, '');
 await db.exec(fs.readFileSync(new URL('./stubs.sql', import.meta.url), 'utf8'));
 await db.exec(schema);
@@ -53,7 +53,7 @@ check(cj.lenguaje === 'java', 'lenguaje normalizado a la escritura existente: ' 
 check((await db.query(`select codigo from cursos where nombre='Java'`)).rows[0].codigo === 'JAVA-1', 'código normalizado');
 check(await err(admin, `insert into cursos (codigo,nombre,lenguaje,nivel) values ('java-1','dup','Java',1)`), 'código único');
 check(await err(admin, `update cursos set profesor_id=$1 where codigo='PY-1'`, [ana]), 'solo profesores asignables');
-await as(admin, `update cursos set profesor_id=$1 where codigo in ('PY-1','PY-2','JS-1')`, [profe]);
+await as(admin, `update cursos set profesor_id=$1 where codigo in ('PY-1','PY-2','JS-1','JAVA-1','JAVA-3')`, [profe]);
 const id = async c => (await db.query(`select id from cursos where codigo=$1`, [c])).rows[0].id;
 const py1 = await id('PY-1'), py2 = await id('PY-2'), py3 = await id('PY-3'), java3 = await id('JAVA-3');
 
@@ -163,5 +163,40 @@ check((await as(ana, 'select mi_perfil() p'))[0].p.email === 'ana@x.com', 'mi_pe
 check(await err(ana, 'select * from admin_usuarios()'), 'admin_usuarios solo admin');
 check((await as(admin, 'select * from admin_usuarios()')).length >= 3, 'admin lista usuarios');
 check((await as(ana, 'select id, nombre, usuario, rol from perfiles')).length >= 3, 'columnas públicas visibles');
+// El profesor elige sus cursos
+const prof2 = await nuevo('p2@x.com', 'profe2', 'Profe Dos');
+const est2 = await nuevo('e2@x.com', 'est2', 'Estudiante Dos');
+const prof3 = await nuevo('p3@x.com', 'profe3', 'Profe Tres');
+await db.query(`update perfiles set rol='profesor' where id = any($1)`, [[prof2, prof3]]);
+await db.query(`update cursos set profesor_id=$1, descripcion='JS' where codigo='JS-1'`, [prof3]);
+const libre = await id('PY-3');
+check((await err(est2, `select matricular($1)`, [libre]))?.includes('profesor'), 'no se matricula en curso sin profesor');
+check((await err(est2, `select tomar_curso($1)`, [libre])), 'estudiante no toma cursos');
+check((await as(prof2, `select tomar_curso($1) m`, [libre]))[0].m.includes('Ahora das'), 'profesor toma curso libre');
+check((await err(prof2, `select tomar_curso($1)`, [await id('JS-1')]))?.includes('otro profesor'), 'no toma curso de otro profesor');
+check((await as(est2, `select matricular($1) m`, [libre]))[0].m.includes('matriculaste'), 'PY-3 activo sin niveles anteriores activos: libre');
+check(await err(prof2, `update cursos set profesor_id=$1 where id=$2`, [profe, libre]), 'no pasa su curso a otro');
+await as(prof2, `update cursos set descripcion='Nueva' where id=$1`, [libre]);
+check((await db.query(`select descripcion from cursos where id=$1`, [libre])).rows[0].descripcion === 'Nueva', 'edita su curso');
+await as(prof2, `update cursos set descripcion='hack' where codigo='JS-1'`);
+check((await db.query(`select descripcion from cursos where codigo='JS-1'`)).rows[0].descripcion !== 'hack', 'no edita curso ajeno');
+check(await err(prof2, `insert into cursos (codigo,nombre,lenguaje,nivel,profesor_id) values ('GO-1','Go','Go',1,$1)`, [prof2]) === null, 'profesor crea su curso');
+check(await err(prof2, `insert into cursos (codigo,nombre,lenguaje,nivel,profesor_id) values ('GO-2','Go 2','Go',2,$1)`, [profe]), 'no crea cursos a nombre de otro');
+check(await err(est2, `insert into cursos (codigo,nombre,lenguaje,nivel) values ('X-1','x','x',1)`), 'estudiante no crea cursos');
+await as(prof2, `delete from cursos where id=$1`, [libre]);
+check((await db.query(`select count(*)::int n from cursos where id=$1`, [libre])).rows[0].n === 1, 'no borra curso con estudiantes');
+check((await as(prof2, `select dejar_curso($1) m`, [libre]))[0].m.includes('Dejaste'), 'profesor deja su curso');
+check((await db.query(`select profesor_id from cursos where id=$1`, [libre])).rows[0].profesor_id === null, 'curso queda libre');
+check(await err(prof2, `select dejar_curso($1)`, [libre]), 'no deja un curso que no da');
+
+// Limpieza del contenido de ejemplo: borra lo sembrado y respeta lo creado por el profesor
+await db.query(`insert into clases (curso_id, titulo) select id, 'Mi clase propia' from cursos where codigo='PY-2'`);
+const antes = (await db.query(`select count(*)::int n from clases`)).rows[0].n;
+const limpieza = fs.readdirSync(dir).find(f => f.includes('quitar_contenido_ejemplo'));
+await db.exec(fs.readFileSync(new URL(limpieza, dir), 'utf8'));
+const quedan = (await db.query(`select titulo from clases`)).rows.map(r => r.titulo);
+check(antes > 1 && quedan.length === 1 && quedan[0] === 'Mi clase propia', 'limpieza borra solo el ejemplo: ' + quedan.join(','));
+check((await db.query(`select count(*)::int n from cursos where codigo in ('PY-2','PY-3','JS-1','JS-2')`)).rows[0].n === 4, 'las materias se mantienen');
+
 console.log(`\n${ok} ok, ${fail} fallas`);
 process.exit(fail ? 1 : 0);

@@ -6,7 +6,7 @@
 //    o al hacer clic en <button data-accion="x">. Si terminan bien, la
 //    pantalla se vuelve a dibujar con los datos nuevos.
 import { sb, configurado, rpc, mensajeDeError } from "./api.js";
-import { html, e, nombreRol, mensajesHtml, error as flashError } from "./ui.js";
+import { html, nombreRol, mensajesHtml, alerta, icono, error as flashError } from "./ui.js";
 import * as auth from "./vistas/auth.js";
 import * as est from "./vistas/estudiante.js";
 import * as prof from "./vistas/profesor.js";
@@ -83,8 +83,9 @@ function menu(rutaActual) {
         if (r === "progreso") return ["progreso", "curso", "actividad", "examen"].includes(raiz);
         return raiz === r;
     };
+    const ICONO = { inicio: "home", matricula: "matricula", progreso: "chart", docente: "class", admin: "shield", perfil: "user", ajustes: "sun" };
     return [...items, ["perfil", "Perfil"], ["ajustes", "Ajustes"]]
-        .map(([r, t]) => html`<a href="#/${r}" class="nav-item ${activo(r) ? "active" : ""}">${t}</a>`);
+        .map(([r, t]) => html`<a href="#/${r}" class="nav-item ${activo(r) ? "active" : ""}">${icono(ICONO[r])}<span>${t}</span></a>`);
 }
 
 function layout(rutaActual, vista) {
@@ -104,7 +105,7 @@ function layout(rutaActual, vista) {
             </div>
             <nav class="sidebar-nav">${menu(rutaActual)}</nav>
         </div>
-        <button type="button" class="logout-link" data-salir>Cerrar sesión</button>
+        <button type="button" class="logout-link" data-salir>${icono("logout")}<span>Cerrar sesión</span></button>
     </aside>
     <main class="dashboard-main">
         <header class="topbar">
@@ -122,7 +123,7 @@ function layout(rutaActual, vista) {
         ${vista.html}
     </main>
 </div>
-<footer class="footer-bar"><span>© Fen Academy</span><span>Powered by Fen</span></footer>`;
+<footer class="footer-bar"><span>© ${new Date().getFullYear()} Fen Academy</span><span>Powered by Fen</span></footer>`;
 }
 
 function layoutAuth(vista) {
@@ -132,8 +133,14 @@ function layoutAuth(vista) {
 }
 
 let dibujando = 0;
-export async function dibujar() {
+/**
+ * Dibuja la pantalla de la ruta actual.
+ * silencioso: después de guardar o eliminar, se actualiza en el lugar
+ * (sin pantalla de "Cargando…" y sin mover el scroll).
+ */
+export async function dibujar({ silencioso = false } = {}) {
     const turno = ++dibujando;
+    const scroll = window.scrollY;
     if (limpiar) { limpiar(); limpiar = null; }
     const { ruta, query } = leerHash();
     const ctx = {
@@ -155,7 +162,8 @@ export async function dibujar() {
                 return ir(INICIO[perfil.rol]);
             }
             ctx.params = encontrada.params;
-            app.innerHTML = layout(ruta, { titulo: "Cargando…", cargando: true, html: html`<p class="muted panel-help">Cargando…</p>` });
+            if (!silencioso) app.innerHTML = layout(ruta, { titulo: "Cargando…", cargando: true,
+                html: html`<div class="cargando-pantalla"><span class="spinner"></span>Cargando…</div>` });
             vista = await encontrada.fn(ctx);
         }
     } catch (err) {
@@ -169,29 +177,38 @@ export async function dibujar() {
     document.title = `${vista.titulo || "Inicio"} | Fen Academy`;
     app.innerHTML = vista.auth || !perfil || modoRecuperacion || !configurado ? layoutAuth(vista) : layout(ruta, vista);
     vista.alMontar?.(app, ctx);
+    if (silencioso) window.scrollTo(0, scroll);
+    else window.scrollTo(0, 0);
+    // Los avisos de éxito se van solos.
+    app.querySelectorAll(".alert.success").forEach(a => setTimeout(() => cerrarAlerta(a), 5000));
+}
+
+function cerrarAlerta(a) {
+    a.classList.add("saliendo");
+    setTimeout(() => a.remove(), 250);
 }
 
 /** Muestra un error sin redibujar (así no se pierde lo que el usuario escribió). */
 function mostrarError(texto) {
     const caja = document.getElementById("mensajes");
     const enAuth = !!document.querySelector(".auth-box");
-    if (caja) caja.innerHTML = enAuth ? `<div class="msg-error">${e(texto)}</div>`
-        : `<div class="alerts-box no-side-padding"><div class="alert error">${e(texto)}</div></div>`;
+    if (caja) caja.innerHTML = enAuth ? html`<div class="msg-error">${texto}</div>`
+        : html`<div class="alerts-box no-side-padding">${alerta("error", texto)}</div>`;
     caja?.scrollIntoView({ behavior: "smooth", block: "center" });
 }
 
 async function ejecutar(nombre, el, datos) {
     const fn = acciones[nombre];
     if (!fn) return;
-    const botones = el.tagName === "FORM" ? el.querySelectorAll("button") : [el];
-    botones.forEach(b => (b.disabled = true));
+    const botones = [...(el.tagName === "FORM" ? el.querySelectorAll("button") : [el])];
+    botones.forEach(b => { b.disabled = true; b.classList.add("ocupado"); });
     try {
         const resultado = await fn(datos, el);
-        if (resultado !== false) await dibujar();
+        if (resultado !== false) await dibujar({ silencioso: true });
     } catch (err) {
         console.error(err);
         mostrarError(mensajeDeError(err));
-        botones.forEach(b => (b.disabled = false));
+        botones.forEach(b => { b.disabled = false; b.classList.remove("ocupado"); });
     }
 }
 
@@ -201,18 +218,57 @@ document.addEventListener("submit", ev => {
     const form = ev.target.closest("form[data-accion]");
     if (!form) return;
     ev.preventDefault();
-    if (form.dataset.confirm && !confirm(form.dataset.confirm)) return;
     const datos = Object.fromEntries(new FormData(form).entries());
     form.querySelectorAll("input[type=file]").forEach(i => (datos[i.name] = i.files[0] || null));
-    ejecutar(form.dataset.accion, form, { ...form.dataset, ...datos });
+    confirmarSiHace(form).then(ok => ok && ejecutar(form.dataset.accion, form, { ...form.dataset, ...datos }));
 });
+
+/** Ventana de confirmación propia (reemplaza al confirm() del navegador). */
+function confirmar(mensaje, { peligro = false, boton = null } = {}) {
+    return new Promise(resolver => {
+        const fondo = document.createElement("div");
+        fondo.className = "modal-fondo";
+        fondo.innerHTML = html`<div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-texto">
+            <p id="modal-texto">${mensaje}</p>
+            <div class="modal-botones">
+                <button type="button" class="admin-btn secundario" data-r="no">Cancelar</button>
+                <button type="button" class="admin-btn ${peligro ? "danger" : ""}" data-r="si">${boton || (peligro ? "Eliminar" : "Aceptar")}</button>
+            </div></div>`;
+        const previo = document.activeElement;
+        const cerrar = valor => {
+            document.removeEventListener("keydown", teclas, true);
+            fondo.classList.add("saliendo");
+            setTimeout(() => fondo.remove(), 150);
+            previo?.focus?.();
+            resolver(valor);
+        };
+        const teclas = ev => {
+            if (ev.key === "Escape") { ev.preventDefault(); cerrar(false); }
+        };
+        fondo.addEventListener("click", ev => {
+            if (ev.target === fondo) return cerrar(false);
+            const b = ev.target.closest("[data-r]");
+            if (b) cerrar(b.dataset.r === "si");
+        });
+        document.addEventListener("keydown", teclas, true);
+        document.body.appendChild(fondo);
+        fondo.querySelector('[data-r="si"]').focus();
+    });
+}
+
+const confirmarSiHace = el => {
+    if (!el.dataset.confirm) return Promise.resolve(true);
+    const peligro = el.classList.contains("danger") || !!el.querySelector?.("button.danger") || /eliminar|borrar/i.test(el.dataset.confirm);
+    return confirmar(el.dataset.confirm, { peligro, boton: el.dataset.boton });
+};
 
 document.addEventListener("click", ev => {
     const boton = ev.target.closest("button[data-accion]");
     if (boton && !boton.form) {
-        if (boton.dataset.confirm && !confirm(boton.dataset.confirm)) return;
-        return ejecutar(boton.dataset.accion, boton, { ...boton.dataset });
+        return confirmarSiHace(boton).then(ok => ok && ejecutar(boton.dataset.accion, boton, { ...boton.dataset }));
     }
+    const cerrarA = ev.target.closest("[data-cerrar-alerta]");
+    if (cerrarA) return cerrarAlerta(cerrarA.closest(".alert"));
     if (ev.target.closest("[data-toggle-sidebar]")) document.querySelector(".sidebar")?.classList.toggle("collapsed");
     const toggle = ev.target.closest("[data-toggle]");
     if (toggle) document.getElementById(toggle.dataset.toggle)?.classList.toggle("open");

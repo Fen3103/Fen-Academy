@@ -85,11 +85,14 @@ export async function matricula({ perfil }) {
         q(sb.from("matriculas").select("curso_id, estado, curso:cursos(lenguaje, nivel)").eq("user_id", perfil.id)),
     ]);
     const estado = new Map(mias.map(m => [m.curso_id, m.estado]));
+    // Solo se ofrecen los cursos que alguien está dando (y los que ya cursaste).
+    const activos = cursos.filter(c => c.profesor);
+    const visibles = cursos.filter(c => c.profesor || estado.has(c.id));
     const grupos = new Map();
-    for (const c of cursos) {
+    for (const c of visibles) {
         const clave = c.lenguaje;
         if (!grupos.has(clave)) grupos.set(clave, []);
-        const req = requisito(c, cursos);
+        const req = estado.has(c.id) ? null : requisito(c, activos);
         const aprobado = req && req.some(r => estado.get(r.id) === "Aprobado");
         grupos.get(clave).push({ c, estado: estado.get(c.id), bloqueado: !!req && !aprobado,
             req: req ? req.map(r => `${r.codigo} ${r.nombre}`).join(" o ") : null });
@@ -102,7 +105,7 @@ export async function matricula({ perfil }) {
         const accion = f.estado ? html`<a class="accion-icon accion-check" href="#/curso/${f.c.id}" title="Entrar al curso">→</a>`
             : f.bloqueado ? html`<span class="accion-icon accion-lock" title="Requiere aprobar ${f.req}">🔒</span>`
             : html`<button type="button" class="accion-btn" title="Matricularme" data-accion="matricular" data-id="${f.c.id}"
-                     data-confirm="¿Matricularte en ${f.c.nombre}?">+</button>`;
+                     data-confirm="¿Matricularte en ${f.c.nombre}?" data-boton="Matricularme">+</button>`;
         return html`<tr class="${clase}"><td>${f.c.codigo}</td><td>${f.c.nombre}</td><td>${f.c.nivel}</td>
             <td>${f.c.profesor?.nombre ?? "Por asignar"}</td><td>${f.req ?? "--"}</td><td>${chip}</td><td>${accion}</td></tr>`;
     };
@@ -118,7 +121,7 @@ export async function matricula({ perfil }) {
             <thead><tr><th>Código</th><th>Nombre</th><th>Nivel</th><th>Profesor</th><th>Requisito</th><th>Estado</th><th>✔</th></tr></thead>
             <tbody>
                 ${[...grupos].map(([leng, filas]) => html`<tr class="grupo-lenguaje"><td colspan="7">${leng}</td></tr>${filas.map(fila)}`)}
-                ${cursos.length ? "" : html`<tr><td colspan="7">Todavía no hay cursos creados.</td></tr>`}
+                ${visibles.length ? "" : html`<tr><td colspan="7">Todavía no hay cursos abiertos. Tu profesor los habilita cuando empieza a darlos.</td></tr>`}
             </tbody>
         </table>
     </div>
@@ -361,7 +364,7 @@ function panelExamen(a, est, resultado, solucion, respuestas) {
         </div>
         ${est.iniciado
             ? html`<div class="upload-box"><a class="admin-btn" href="#/examen/${a.id}">Continuar examen</a></div>`
-            : html`<div class="upload-box"><button type="button" data-accion="comenzar" data-confirm="¿Comenzar el examen ahora? Solo tenés un intento.">Comenzar examen</button></div>`}`;
+            : html`<div class="upload-box"><button type="button" data-accion="comenzar" data-confirm="¿Comenzar el examen ahora? Solo tenés un intento." data-boton="Comenzar">Comenzar examen</button></div>`}`;
     }
     return html`<h1>Tu examen</h1><div class="review-box"><h3>Examen no disponible</h3><p>${est.motivo}</p></div>`;
 }
@@ -456,7 +459,7 @@ export async function rendir({ perfil, params, alSalir }) {
     <p class="muted panel-help">Respondé todas las preguntas y presioná <strong>Enviar examen</strong>. Solo tenés un intento.
         Las respuestas cortas no distinguen mayúsculas ni tildes.</p>
     ${restante !== null ? html`<div class="exam-timer" id="reloj">⏱ --:--</div>` : ""}
-    <form data-accion="enviar" id="form-examen" data-confirm="¿Enviar el examen? No vas a poder cambiar tus respuestas.">
+    <form data-accion="enviar" id="form-examen" data-confirm="¿Enviar el examen? No vas a poder cambiar tus respuestas." data-boton="Enviar examen">
         ${mezclar(preguntas, perfil.id + ":" + id).map((p, i) => html`
         <div class="pregunta">
             <h3>${i + 1}. ${p.enunciado} <span class="puntos">(${num(p.puntos)} ${Number(p.puntos) === 1 ? "punto" : "puntos"})</span></h3>

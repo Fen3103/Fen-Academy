@@ -13,31 +13,19 @@ const nulo = v => (v === undefined || String(v).trim() === "" ? null : String(v)
 
 export async function inicio({ perfil }) {
     const esAdmin = perfil.rol === "admin";
-    let consulta = sb.from("cursos").select("*, profesor:perfiles(nombre), matriculas(count), actividades(id)").order("lenguaje").order("nivel");
-    if (!esAdmin) consulta = consulta.eq("profesor_id", perfil.id);
-    const cursos = await q(consulta);
+    const todos = await q(sb.from("cursos").select("*, profesor:perfiles(nombre), matriculas(count), actividades(id)")
+        .order("lenguaje").order("nivel").order("codigo"));
+    // El admin ve todo; el profesor solo los cursos que eligió dar.
+    const cursos = esAdmin ? todos : todos.filter(c => c.profesor_id === perfil.id);
+    const libres = esAdmin ? [] : todos.filter(c => !c.profesor_id);
     const ids = cursos.map(c => c.id);
     const pendientes = ids.length ? await q(sb.from("entregas").select("id, actividad:actividades!inner(curso_id)")
         .eq("estado", "Pendiente").in("actividad.curso_id", ids)) : [];
     const porRevisar = id => pendientes.filter(p => p.actividad.curso_id === id).length;
     const estudiantes = cursos.reduce((s, c) => s + (c.matriculas[0]?.count ?? 0), 0);
+    const lenguajes = [...new Set(todos.map(c => c.lenguaje))];
 
-    return {
-        titulo: "Panel docente",
-        html: html`
-<div class="hero-dashboard-card hero-docente"><div class="hero-dashboard-text">
-    <h1>Hola, ${perfil.nombre}</h1>
-    <p>Prepará tus clases, publicá exámenes y revisá las entregas de tus estudiantes.</p>
-</div></div>
-<section class="stats-grid stats-grid-3">
-    <div class="stat-card"><span>${esAdmin ? "Cursos (todos)" : "Mis cursos"}</span><strong>${cursos.length}</strong></div>
-    <div class="stat-card"><span>Estudiantes</span><strong>${estudiantes}</strong></div>
-    <div class="stat-card ${pendientes.length ? "stat-alerta" : ""}"><span>Entregas por revisar</span><strong>${pendientes.length}</strong></div>
-</section>
-<section class="course-panel">
-    <div class="panel-title">${esAdmin ? "Todos los cursos" : "Mis cursos"}</div>
-    <div class="course-list">
-        ${cursos.map(c => html`
+    const tarjeta = c => html`
         <a href="#/docente/curso/${c.id}" class="course-link-card">
             <div class="course-item con-imagen">
                 <div class="course-thumb ${claseLenguaje(c.lenguaje)}"></div>
@@ -52,17 +40,79 @@ export async function inicio({ perfil }) {
                 </div>
                 </div>
             </div>
-        </a>`)}
-        ${cursos.length ? "" : html`<div class="course-item"><h3>Sin cursos asignados</h3>
-            <p>Cuando un administrador te asigne cursos, aparecerán en este panel.</p></div>`}
+        </a>`;
+
+    return {
+        titulo: "Panel docente",
+        html: html`
+<div class="hero-dashboard-card hero-docente"><div class="hero-dashboard-text">
+    <h1>Hola, ${perfil.nombre}</h1>
+    <p>${esAdmin ? "Prepará clases, publicá exámenes y revisá entregas en cualquier curso."
+        : "Elegí qué cursos vas a dar, prepará tus clases, publicá exámenes y revisá las entregas de tus estudiantes."}</p>
+</div></div>
+<section class="stats-grid stats-grid-3">
+    <div class="stat-card"><span>${esAdmin ? "Cursos (todos)" : "Cursos que doy"}</span><strong>${cursos.length}</strong></div>
+    <div class="stat-card"><span>Estudiantes</span><strong>${estudiantes}</strong></div>
+    <div class="stat-card ${pendientes.length ? "stat-alerta" : ""}"><span>Entregas por revisar</span><strong>${pendientes.length}</strong></div>
+</section>
+<section class="course-panel">
+    <div class="panel-title">${esAdmin ? "Todos los cursos" : "Cursos que doy"}</div>
+    <div class="course-list">
+        ${cursos.map(tarjeta)}
+        ${cursos.length ? "" : html`<div class="course-item"><h3>Todavía no elegiste cursos</h3>
+            <p>Abajo, en el catálogo, tocá <strong>Voy a dar este curso</strong> en los que quieras enseñar, o creá uno nuevo.</p></div>`}
     </div>
-</section>`,
+</section>
+${esAdmin ? "" : html`
+<section class="course-panel admin-section">
+    <div class="panel-title panel-title-acciones">
+        <span>Catálogo de cursos sin profesor</span>
+        <button type="button" class="admin-btn" data-toggle="crear-curso">+ Crear curso</button>
+    </div>
+    <p class="muted panel-help">Los estudiantes solo ven y pueden matricular los cursos que tienen profesor.
+        Cuando elegís un curso, aparece en su matrícula.</p>
+    <div id="crear-curso" class="resource-form-panel"><div class="admin-course-form">
+        <h3>Crear curso</h3>
+        <form data-accion="crearCurso">
+            <input type="text" name="codigo" placeholder="Código (ej: PY-4, JAVA-1)" required maxlength="20">
+            <input type="text" name="nombre" placeholder="Nombre del curso" required>
+            <input type="text" name="lenguaje" placeholder="Lenguaje (ej: Python)" required list="lenguajes">
+            <datalist id="lenguajes">${lenguajes.map(l => html`<option value="${l}"></option>`)}</datalist>
+            <input type="number" name="nivel" placeholder="Nivel (1, 2, 3...)" min="1" required>
+            <textarea name="descripcion" placeholder="Descripción"></textarea>
+            <button class="admin-btn" type="submit">Crear y dar este curso</button>
+        </form>
+    </div></div>
+    <div class="course-list">
+        ${libres.map(c => html`
+        <div class="course-item con-imagen">
+            <div class="course-thumb ${claseLenguaje(c.lenguaje)}"></div>
+            <div class="catalogo-info">
+                <h3>${c.codigo} · ${c.nombre}</h3>
+                <p>${c.lenguaje} · Nivel ${c.nivel}</p>
+                <p>${c.descripcion}</p>
+            </div>
+            <button type="button" class="admin-btn" data-accion="tomar" data-id="${c.id}">Voy a dar este curso</button>
+        </div>`)}
+        ${libres.length ? "" : html`<div class="course-item"><h3>No hay cursos libres</h3><p>Todos los cursos ya tienen profesor. Podés crear uno nuevo.</p></div>`}
+    </div>
+</section>`}`,
+        acciones: {
+            async tomar(d) { exito(await rpc("tomar_curso", { p_curso: Number(d.id) })); },
+            async crearCurso(d) {
+                const nivel = Number(d.nivel);
+                if (!Number.isInteger(nivel) || nivel < 1) throw new ErrorFen("El nivel debe ser un número entero desde 1.");
+                await q(sb.from("cursos").insert({ codigo: d.codigo.trim(), nombre: d.nombre.trim(), lenguaje: d.lenguaje.trim(), nivel,
+                    descripcion: nulo(d.descripcion), profesor_id: perfil.id }));
+                exito("Curso creado. Ya aparece en tus cursos y en la matrícula de los estudiantes.");
+            },
+        },
     };
 }
 
 // ------------------------------------------------------------------- curso ---
 
-export async function curso({ params, query }) {
+export async function curso({ perfil, params, query }) {
     const id = Number(params.id);
     const [c] = await q(sb.from("cursos").select("*").eq("id", id));
     if (!c) throw new ErrorFen("El curso no existe.");
@@ -124,8 +174,9 @@ export async function curso({ params, query }) {
     <p>${c.codigo} · ${c.lenguaje} · Nivel ${c.nivel} · ${matriculas.length} estudiantes · Vista docente</p>
 </div></section>
 ${tabs([{ id: "clases", texto: "Clases", icono: "class" }, { id: "evaluacion", texto: "Evaluación", icono: "eval" },
-        { id: "entregas", texto: porRevisar ? `Entregas (${porRevisar})` : "Entregas", icono: "list" },
-        { id: "estudiantes", texto: "Estudiantes", icono: "list" }, { id: "recursos", texto: "Recursos", icono: "folder" }], tab)}
+        { id: "entregas", texto: "Entregas", icono: "inbox", contador: porRevisar },
+        { id: "estudiantes", texto: "Estudiantes", icono: "users" }, { id: "recursos", texto: "Recursos", icono: "folder" },
+        { id: "datos", texto: "Datos del curso", icono: "settings" }], tab)}
 
 <div ${raw(panelTab("clases", tab))}>
     <section class="teacher-grid">
@@ -241,8 +292,47 @@ ${tabs([{ id: "clases", texto: "Clases", icono: "class" }, { id: "evaluacion", t
         </form>
     </div></div>
     <div class="resource-list resource-list-full">${listaRecursos(recursos, true)}</div>
+</div>
+
+<div ${raw(panelTab("datos", tab))}>
+    <section class="teacher-grid">
+        <div class="course-panel">
+            <div class="panel-title">Datos del curso</div>
+            <form data-accion="editarCurso" class="form-fen">
+                <label>Código (único)</label><input type="text" name="codigo" value="${c.codigo}" required maxlength="20">
+                <label>Nombre</label><input type="text" name="nombre" value="${c.nombre}" required>
+                <label>Lenguaje</label><input type="text" name="lenguaje" value="${c.lenguaje}" required>
+                <label>Nivel</label><input type="number" name="nivel" value="${c.nivel}" min="1" required>
+                <small>Cambiar el nivel o el lenguaje cambia los requisitos de matrícula de esa ruta.</small>
+                <label>Descripción</label><textarea name="descripcion">${c.descripcion}</textarea>
+                <button class="admin-btn" type="submit">Guardar cambios</button>
+            </form>
+        </div>
+        ${c.profesor_id === perfil.id ? html`
+        <div class="course-panel">
+            <div class="panel-title">Dejar de dar este curso</div>
+            <p class="muted panel-help">El curso vuelve al catálogo y los estudiantes ya no pueden matricularse.
+                Las clases, actividades, entregas y notas se conservan si lo volvés a tomar.</p>
+            <div class="panel-help">
+                <button type="button" class="admin-btn danger" data-accion="dejar" data-boton="Dejar curso"
+                    data-confirm="¿Dejar de dar ${c.codigo} · ${c.nombre}? Podés volver a tomarlo desde el catálogo.">Dejar este curso</button>
+            </div>
+        </div>` : ""}
+    </section>
 </div>`,
         acciones: {
+            async editarCurso(d) {
+                const nivel = Number(d.nivel);
+                if (!Number.isInteger(nivel) || nivel < 1) throw new ErrorFen("El nivel debe ser un número entero desde 1.");
+                await q(sb.from("cursos").update({ codigo: d.codigo.trim(), nombre: d.nombre.trim(), lenguaje: d.lenguaje.trim(),
+                    nivel, descripcion: nulo(d.descripcion) }).eq("id", id));
+                exito("Datos del curso guardados.");
+            },
+            async dejar() {
+                exito(await rpc("dejar_curso", { p_curso: id }));
+                location.hash = "#/docente";
+                return false;
+            },
             async crearClase(d) {
                 await q(sb.from("clases").insert({ curso_id: id, titulo: d.titulo.trim(), orden: Number(d.orden) || siguiente, descripcion: nulo(d.descripcion) }));
                 exito("Clase creada.");
