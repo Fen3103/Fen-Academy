@@ -7,5 +7,5 @@
 //  NUNCA pongas acá la "service_role / secret key".
 // =============================================================================
 
-export const SUPABASE_URL = "https://TU-PROYECTO.supabase.co";
-export const SUPABASE_ANON_KEY = "TU-ANON-KEY";
+export const SUPABASE_URL = "https://zvvwxfbavousvjbenimx.supabase.co";
+export const SUPABASE_ANON_KEY = "sb_publishable_hp9LDUMbIrJDkLXwODlQuQ_QxbYS3c3";
