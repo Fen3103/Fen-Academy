@@ -1,11 +1,12 @@
 // Pantallas del ESTUDIANTE: inicio, matrícula, progreso, curso, actividad y examen.
 import { sb, q, rpc, ErrorFen, subirArchivo, descargar, EXT_ENTREGAS, ultimaPorActividad, resumen, aporte, requisito, mezclar } from "../api.js";
-import { html, raw, num, pct, fecha, fechaHora, vencida, chipEntrega, chipMatricula, chipTipo, tabs, panelTab,
+import { html, raw, num, pct, fecha, fechaHora, vencida, chipEntrega, chipMatricula, periodoCurso, chipTipo, tabs, panelTab,
          enlaceExterno, exito, NOTICIAS, claseLenguaje, icono, iconoTipo, celdaFecha, etiquetasActividad, bloqueCurso, fechaDMA, compararLenguajes, ISOTIPO } from "../ui.js";
 
 const MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
 
-const CURSO_COLS = "id, codigo, nombre, lenguaje, nivel, descripcion, profesor:perfiles!cursos_profesor_id_fkey(nombre)";
+// "*" para incluir fecha_inicio/fecha_fin/nota_minima si la migración ya está (y no fallar si no).
+const CURSO_COLS = "*, profesor:perfiles!cursos_profesor_id_fkey(nombre)";
 
 async function misMatriculas(uid) {
     return q(sb.from("matriculas").select(`id, curso_id, estado, curso:cursos(${CURSO_COLS})`).eq("user_id", uid).order("fecha"));
@@ -64,7 +65,7 @@ export async function inicio({ perfil }) {
             <a href="#/curso/${m.curso_id}" class="curso-card ${claseLenguaje(m.curso.lenguaje)}">
                 ${bloqueCurso(m.curso)}
                 <div class="curso-card-cuerpo">
-                    <div class="curso-card-titulo"><h3>${m.curso.nombre}</h3>${chipMatricula(m.estado)}</div>
+                    <div class="curso-card-titulo"><h3>${m.curso.nombre}</h3>${chipMatricula(m.estado, m.curso)}</div>
                     <p>${icono("user")} ${m.curso.profesor?.nombre ?? "Profesor por asignar"}</p>
                     <p>${icono("capas")} ${m.curso.lenguaje} · Nivel ${m.curso.nivel}</p>
                     <div class="curso-card-pie">
@@ -148,7 +149,7 @@ export async function matricula({ perfil }) {
                 ${f.bloqueado ? html`<p class="texto-rojo">${icono("shield")} Requisito: aprobar ${f.req}</p>` : ""}
             </div>
             <div class="nivel-accion">
-                ${f.estado ? html`${chipMatricula(f.estado)}<a class="admin-btn secundario" href="#/curso/${f.c.id}">Entrar ${icono("flecha")}</a>`
+                ${f.estado ? html`${chipMatricula(f.estado, f.c)}<a class="admin-btn secundario" href="#/curso/${f.c.id}">Entrar ${icono("flecha")}</a>`
                 : f.bloqueado ? html`<span class="estado-chip estado-lock"><i class="punto"></i>Bloqueado</span>`
                 : html`<button type="button" class="admin-btn" data-accion="matricular" data-id="${f.c.id}"
                         data-confirm="¿Matricularte en ${f.c.nombre}?" data-boton="Matricularme">Matricularme</button>`}
@@ -218,7 +219,7 @@ export async function progreso({ perfil }) {
                     <div class="progress-head">
                         <div>
                             <h3>${m.curso.codigo} · ${m.curso.nombre}</h3>
-                            <p>${m.curso.lenguaje} · Nivel ${m.curso.nivel} · ${chipMatricula(m.estado)}</p>
+                            <p>${m.curso.lenguaje} · Nivel ${m.curso.nivel} · ${chipMatricula(m.estado, m.curso)}</p>
                         </div>
                         <div class="nota-box"><strong>${num(r.nota)}</strong><small>nota acumulada / 100</small></div>
                     </div>
@@ -384,7 +385,8 @@ export async function curso({ perfil, params, query }) {
         html: html`
 <section class="course-banner ${claseLenguaje(c.lenguaje)}"><div class="course-banner-overlay">
     <h1>${c.nombre}</h1>
-    <p>${c.codigo} · ${c.lenguaje} · Nivel ${c.nivel} · Profesor: ${c.profesor?.nombre ?? "por asignar"} · ${chipMatricula(mat.estado)}</p>
+    <p>${c.codigo} · ${c.lenguaje} · Nivel ${c.nivel} · Profesor: ${c.profesor?.nombre ?? "por asignar"} · ${chipMatricula(mat.estado, c)}</p>
+    ${periodoCurso(c) || c.nota_minima != null ? html`<p class="curso-periodo">${periodoCurso(c) ? html`${icono("calendar")} ${periodoCurso(c)}` : ""}${periodoCurso(c) && c.nota_minima != null ? " · " : ""}${c.nota_minima != null ? `Aprobás con ${num(c.nota_minima)}/100` : ""}</p>` : ""}
 </div></section>
 ${tabs([{ id: "clases", texto: "Clases", icono: "class" }, { id: "evaluacion", texto: "Evaluación", icono: "eval" },
         { id: "anuncios", texto: "Anuncios", icono: "megafono", contador: anuncios.filter(an => Date.now() - new Date(an.fecha) < 7 * 864e5).length || null },

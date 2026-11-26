@@ -46,10 +46,22 @@ export function chipEntrega(estado) {
         default: return chip("estado-lock", "Sin entregar");
     }
 }
-export function chipMatricula(estado) {
+// El estado lo calcula la base (fechas + nota). "Por iniciar" es solo visual:
+// el curso todavía no llegó a su fecha de inicio.
+export function chipMatricula(estado, curso = null) {
     if (estado === "Aprobado") return chip("estado-ok", "Aprobado");
     if (estado === "Reprobado") return chip("estado-bad", "Reprobado");
+    if (curso?.fecha_inicio && String(curso.fecha_inicio) > hoy()) return chip("estado-lock", "Por iniciar");
     return chip("estado-open", "Cursando");
+}
+
+/** "Del 01/02/2027 al 30/06/2027" (o solo una de las fechas); vacío si no hay. */
+export function periodoCurso(c) {
+    const f = d => String(d).slice(0, 10).split("-").reverse().join("/");
+    if (c?.fecha_inicio && c?.fecha_fin) return `Del ${f(c.fecha_inicio)} al ${f(c.fecha_fin)}`;
+    if (c?.fecha_inicio) return `Empieza el ${f(c.fecha_inicio)}`;
+    if (c?.fecha_fin) return `Termina el ${f(c.fecha_fin)}`;
+    return "";
 }
 export const chipTipo = t => (t === "examen" ? chip("estado-exam", "Examen") : chip("estado-lock", "Entrega"));
 export const nombreRol = r => ({ admin: "Administrador", profesor: "Profesor" })[r] || "Estudiante";

@@ -78,7 +78,11 @@ async function cargarPerfil() {
     const { data } = await sb.auth.getSession();
     if (!data.session) { perfil = null; return; }
     // getUser() trae los metadatos frescos del servidor (por si se cambiaron en otro dispositivo).
-    const [p, usuario] = await Promise.all([rpc("mi_perfil"), sb.auth.getUser().catch(() => null)]);
+    // sincronizar_estados pone al día Aprobado/Reprobado de los cursos que ya cerraron por fecha.
+    const [p, usuario] = await Promise.all([
+        rpc("sincronizar_estados").catch(() => null).then(() => rpc("mi_perfil")),
+        sb.auth.getUser().catch(() => null),
+    ]);
     perfil = p;
     aparienciaDeCuenta(usuario?.data?.user?.user_metadata);
     if (!perfil) {   // la cuenta fue eliminada por un admin

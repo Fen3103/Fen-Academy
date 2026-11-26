@@ -65,7 +65,7 @@ check(await err(ana, `insert into matriculas (user_id,curso_id) values (auth.uid
 check(await err(profe, `select matricular($1)`, [py1]), 'profe no se matricula');
 check((await as(luis, `select * from clases where curso_id=$1`, [py1])).length === 0, 'no matriculado no ve clases');
 check((await as(ana, `select * from clases where curso_id=$1`, [py1])).length === 4, 'matriculada ve clases');
-await as(ana, `update matriculas set estado='Aprobado' where user_id=auth.uid()`);
+check(await err(ana, `update matriculas set estado='Aprobado' where user_id=auth.uid()`), 'estudiante no cambia su estado');
 check((await db.query(`select estado from matriculas where user_id=$1`, [ana])).rows[0].estado === 'Cursando', 'estudiante no se aprueba sola');
 
 // Actividades
@@ -237,6 +237,47 @@ check((await db.query(`select count(*)::int n from cursos where codigo='CS-1' an
 // Cursos de base y cierre (se cargan con el resto de las migraciones)
 const fund = (await db.query(`select codigo from cursos where codigo in ('LOG-1','LOG-2','COMP-1','WEB-1','ED-1','ED-2','PROY-1') and profesor_id is null`)).rows;
 check(fund.length === 7, 'cursos de base y cierre creados sin profesor: ' + fund.length);
+
+
+// Estado automático por fechas y nota; el profesor quita estudiantes
+{
+  const pe = await nuevo('pe@x.com', 'profe_est', 'Profe Estados');
+  await db.query(`update perfiles set rol='profesor' where id=$1`, [pe]);
+  const e1 = await nuevo('e1@x.com', 'est_uno', 'Est Uno');
+  const e2 = await nuevo('e2@x.com', 'est_dos', 'Est Dos');
+  const c = (await db.query(`insert into cursos (codigo,nombre,lenguaje,nivel,profesor_id) values ('EST-1','Estados','Estados',1,$1) returning id`, [pe])).rows[0].id;
+  const a1 = (await db.query(`insert into actividades (curso_id,titulo,valor) values ($1,'T1',60) returning id`, [c])).rows[0].id;
+  const a2 = (await db.query(`insert into actividades (curso_id,titulo,valor) values ($1,'T2',40) returning id`, [c])).rows[0].id;
+  await as(e1, `select matricular($1)`, [c]);
+  await as(e2, `select matricular($1)`, [c]);
+  const estadoDe = async u => (await db.query(`select estado from matriculas where curso_id=$1 and user_id=$2`, [c, u])).rows[0]?.estado;
+  check(await estadoDe(e1) === 'Cursando', 'sin fecha de fin: Cursando');
+  await db.query(`insert into entregas (actividad_id,user_id,nota) values ($1,$2,80),($3,$2,50)`, [a1, e1, a2]);
+  await db.query(`insert into entregas (actividad_id,user_id,nota) values ($1,$2,40)`, [a1, e2]);
+  check(Number((await db.query(`select fen.nota_curso($1,$2) n`, [c, e1])).rows[0].n) === 68, 'nota final = 80*60% + 50*40% = 68');
+  await as(pe, `update cursos set fecha_inicio=current_date-30, fecha_fin=current_date-1, nota_minima=65 where id=$1`, [c]);
+  check(await estadoDe(e1) === 'Aprobado', 'curso terminado y nota >= mínima: Aprobado');
+  check(await estadoDe(e2) === 'Reprobado', 'curso terminado y nota < mínima: Reprobado');
+  await as(pe, `update cursos set nota_minima=70 where id=$1`, [c]);
+  check(await estadoDe(e1) === 'Reprobado', 'subir la mínima recalcula');
+  await db.query(`insert into entregas (actividad_id,user_id,nota,fecha_entrega) values ($1,$2,100,now()+interval '1 minute')`, [a2, e1]);
+  check(await estadoDe(e1) === 'Aprobado', 'nueva nota recalcula');
+  await as(pe, `update cursos set fecha_fin=current_date+10 where id=$1`, [c]);
+  check(await estadoDe(e1) === 'Cursando', 'extender la fecha de fin vuelve a Cursando');
+  check(await err(pe, `update cursos set fecha_inicio=current_date+20, fecha_fin=current_date+10 where id=$1`, [c]), 'fin antes que inicio: error');
+  check(await err(pe, `update matriculas set estado='Aprobado' where curso_id=$1`, [c]), 'profesor no cambia el estado a mano');
+  check(await err(e1, `select sincronizar_estados()`) === null, 'sincronizar_estados disponible');
+  await as(prof2, `delete from matriculas where curso_id=$1 and user_id=$2`, [c, e2]);
+  check(await estadoDe(e2) !== undefined, 'otro profesor no quita estudiantes');
+  await as(e1, `delete from matriculas where curso_id=$1 and user_id=$2`, [c, e2]);
+  check(await estadoDe(e2) !== undefined, 'estudiante no quita a otro');
+  await as(pe, `delete from matriculas where curso_id=$1 and user_id=$2`, [c, e2]);
+  check(await estadoDe(e2) === undefined, 'profesor quita estudiante de su curso');
+  check((await db.query(`select count(*)::int n from entregas where user_id=$1 and actividad_id=$2`, [e2, a1])).rows[0].n === 1, 'sus entregas se conservan');
+  await db.query(`update cursos set fecha_fin=current_date-1, nota_minima=99 where id=$1`, [c]);
+  await as(e2, `select matricular($1)`, [c]);
+  check(await estadoDe(e2) === 'Reprobado', 'al matricularse en curso terminado entra con su estado');
+}
 
 console.log(`\n${ok} ok, ${fail} fallas`);
 process.exit(fail ? 1 : 0);

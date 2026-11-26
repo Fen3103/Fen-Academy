@@ -1,13 +1,12 @@
 // Pantallas del PROFESOR (y del admin en el "panel docente").
 // La base solo deja ver y modificar los cursos asignados al profesor.
 import { sb, q, rpc, ErrorFen, subirArchivo, descargar, borrarArchivos, EXT_RECURSOS, EXT_ENTREGAS, ultimaPorActividad, resumen } from "../api.js";
-import { html, raw, num, pct, fecha, fechaHora, chipEntrega, chipTipo, tabs, panelTab, enlaceExterno, exito, hoy, claseLenguaje, icono, iconoTipo, celdaFecha, etiquetasActividad, compararLenguajes, fechaDMA, vencida } from "../ui.js";
+import { html, raw, num, pct, fecha, fechaHora, chipEntrega, chipTipo, tabs, panelTab, enlaceExterno, exito, hoy, claseLenguaje, icono, iconoTipo, celdaFecha, etiquetasActividad, compararLenguajes, fechaDMA, vencida, periodoCurso, chipMatricula } from "../ui.js";
 import { listaRecursos, preguntaCorregida } from "./estudiante.js";
 import { AYUDA_MD } from "../md.js";
 const EXT_ENTREGAS_TXT = EXT_ENTREGAS.join(", ") + " · máx. 16 MB";
 
 const ESTADOS_ENTREGA = ["Pendiente", "Revisado", "Aprobado", "Rechazado"];
-const ESTADOS_MATRICULA = ["Cursando", "Aprobado", "Reprobado"];
 const opciones = (lista, actual) => lista.map(v => html`<option value="${v}" ${raw(v === actual ? "selected" : "")}>${v}</option>`);
 const nulo = v => (v === undefined || String(v).trim() === "" ? null : String(v).trim());
 
@@ -190,11 +189,13 @@ export async function curso({ perfil, params, query }) {
     const porRevisar = entregas.filter(e => e.estado === "Pendiente").length;
     const siguiente = clases.length ? Math.max(...clases.map(x => x.orden)) + 1 : 1;
     const tab = query.get("tab") || "clases";
+    const conFechas = "nota_minima" in c;   // la migración de estados ya está aplicada
+    const minima = Number(c.nota_minima ?? 70);
 
     const publicadas = actividades.filter(a => a.publicada);
     const ultimasDe = uid => ultimaPorActividad(entregas.filter(e => e.user_id === uid));
     const celdaNota = (a, en) => {
-        if (en?.nota != null) return html`<span class="lib-nota ${Number(en.nota) >= 70 ? "ok" : "baja"}">${num(en.nota)}</span>`;
+        if (en?.nota != null) return html`<span class="lib-nota ${Number(en.nota) >= minima ? "ok" : "baja"}">${num(en.nota)}</span>`;
         if (en) return html`<span class="lib-pend" title="Entregada, sin calificar">${icono("clock")}</span>`;
         return html`<span class="lib-falta ${vencida(a.fecha_limite) ? "vencida" : ""}" title="${vencida(a.fecha_limite) ? "No entregó (vencida)" : "Sin entregar"}">—</span>`;
     };
@@ -205,10 +206,12 @@ export async function curso({ perfil, params, query }) {
             <td class="lib-alumno"><span class="avatar-mini">${(m.alumno.nombre || "?").slice(0, 1).toUpperCase()}</span>
                 <div><strong>${m.alumno.nombre}</strong><small>@${m.alumno.usuario} · ${r.entregadas}/${r.cantidad} entregadas</small></div></td>
             ${publicadas.map(a => html`<td class="centro">${ult.get(a.id) ? html`<a href="#/docente/calificar/${ult.get(a.id).id}">${celdaNota(a, ult.get(a.id))}</a>` : celdaNota(a, null)}</td>`)}
-            <td class="centro"><strong class="nota-total">${num(r.nota)}</strong><small class="muted"> /100</small></td>
-            <td><form data-accion="estadoMatricula" data-id="${m.id}" class="estado-form">
-                <select name="estado" aria-label="Estado del curso">${opciones(ESTADOS_MATRICULA, m.estado)}</select>
-                <button class="admin-btn secundario" type="submit">Guardar</button></form></td></tr>`;
+            <td class="centro"><strong class="nota-total ${r.nota >= minima ? "texto-verde" : ""}">${num(r.nota)}</strong><small class="muted"> /100</small></td>
+            <td><div class="estado-celda">${chipMatricula(m.estado, c)}
+                <button type="button" class="admin-btn danger icono-solo" data-accion="quitarEstudiante" data-id="${m.id}"
+                    data-boton="Quitar" title="Quitar del curso" aria-label="Quitar a ${m.alumno.nombre} del curso"
+                    data-confirm="¿Quitar a ${m.alumno.nombre} de ${c.codigo}? Sus entregas y notas se conservan si vuelve a matricularse.">${icono("cerrar")}</button>
+            </div></td></tr>`;
     };
 
     // Entregas: solo la última de cada estudiante por actividad; primero las que faltan calificar.
@@ -365,8 +368,11 @@ ${tabs([{ id: "clases", texto: "Clases", icono: "class" }, { id: "evaluacion", t
             <div><h2>Libro de notas</h2><p>${matriculas.length} ${matriculas.length === 1 ? "estudiante" : "estudiantes"} · nota de cada actividad sobre 100</p></div>
             <button type="button" class="admin-btn secundario" id="exportar-notas" ${raw(matriculas.length ? "" : "disabled")}>${icono("download")} Exportar a Excel (CSV)</button>
         </div>
-        <p class="muted panel-help">Marcar a un estudiante como <strong>Aprobado</strong> le permite matricular el siguiente nivel de ${c.lenguaje}.
-            Aprobado o Reprobado cierra sus entregas y exámenes en este curso.</p>
+        <p class="muted panel-help">${conFechas ? html`El estado se calcula solo:
+            <strong>${c.fecha_inicio && String(c.fecha_inicio) > hoy() ? "Por iniciar" : "Cursando"}</strong> hasta el cierre${c.fecha_fin ? ` (${periodoCurso(c).toLowerCase()})` : ""};
+            después, <strong>Aprobado</strong> si la nota final llega a <strong>${num(minima)}</strong>, si no <strong>Reprobado</strong>.
+            ${c.fecha_fin ? "" : html`Poné la fecha de fin en <a href="#/docente/curso/${id}?tab=datos" class="activity-link">Datos del curso</a> para que se cierre.`}`
+            : html`Para que el estado se calcule con fechas y nota, ejecutá en Supabase la migración <strong>20261127000500_estado_por_fechas.sql</strong>.`}</p>
         <div class="act-tabla-wrap"><table class="act-tabla libro-notas">
             <thead><tr><th>Estudiante</th>
                 ${publicadas.map(a => html`<th class="centro" title="${a.titulo}">${iconoTipo(a.tipo)}<span class="lib-col">${a.titulo}</span><small>${pct(a.valor)}</small></th>`)}
@@ -431,6 +437,16 @@ ${tabs([{ id: "clases", texto: "Clases", icono: "class" }, { id: "evaluacion", t
                 <label>Nivel</label><input type="number" name="nivel" value="${c.nivel}" min="1" required>
                 <small>Cambiar el nivel o el lenguaje cambia los requisitos de matrícula de esa ruta.</small>
                 <label>Descripción</label><textarea name="descripcion">${c.descripcion}</textarea>
+                ${conFechas ? html`
+                <h3 class="form-seccion">${icono("calendar")} Período y aprobación</h3>
+                <div class="form-fila">
+                    <div class="form-grupo"><label>Fecha de inicio</label><input type="date" name="fecha_inicio" value="${c.fecha_inicio ?? ""}"></div>
+                    <div class="form-grupo"><label>Fecha de fin</label><input type="date" name="fecha_fin" value="${c.fecha_fin ?? ""}"></div>
+                </div>
+                <label>Nota mínima para aprobar</label>
+                <input type="number" name="nota_minima" value="${num(minima)}" min="0" max="100" step="0.5" required>
+                <small>Antes del inicio los estudiantes ven el curso como "Por iniciar". Al pasar la fecha de fin,
+                    quedan Aprobados o Reprobados según su nota final. Podés cambiar las fechas cuando quieras.</small>` : ""}
                 <button class="admin-btn" type="submit">Guardar cambios</button>
             </form>
         </div>
@@ -481,8 +497,13 @@ ${tabs([{ id: "clases", texto: "Clases", icono: "class" }, { id: "evaluacion", t
             async editarCurso(d) {
                 const nivel = Number(d.nivel);
                 if (!Number.isInteger(nivel) || nivel < 1) throw new ErrorFen("El nivel debe ser un número entero desde 1.");
-                await q(sb.from("cursos").update({ codigo: d.codigo.trim(), nombre: d.nombre.trim(), lenguaje: d.lenguaje.trim(),
-                    nivel, descripcion: nulo(d.descripcion) }).eq("id", id));
+                const cambios = { codigo: d.codigo.trim(), nombre: d.nombre.trim(), lenguaje: d.lenguaje.trim(),
+                    nivel, descripcion: nulo(d.descripcion) };
+                if (conFechas) {
+                    if (d.fecha_inicio && d.fecha_fin && d.fecha_fin < d.fecha_inicio) throw new ErrorFen("La fecha de fin no puede ser anterior a la de inicio.");
+                    Object.assign(cambios, { fecha_inicio: d.fecha_inicio || null, fecha_fin: d.fecha_fin || null, nota_minima: Number(d.nota_minima) });
+                }
+                await q(sb.from("cursos").update(cambios).eq("id", id));
                 exito("Datos del curso guardados.");
             },
             async dejar() {
@@ -520,7 +541,11 @@ ${tabs([{ id: "clases", texto: "Clases", icono: "class" }, { id: "evaluacion", t
                 await q(sb.from("actividades").delete().eq("id", d.id));
                 exito("Actividad eliminada.");
             },
-            async estadoMatricula(d) { await q(sb.from("matriculas").update({ estado: d.estado }).eq("id", d.id)); exito("Estado actualizado."); },
+            async quitarEstudiante(d) {
+                const borradas = await q(sb.from("matriculas").delete().eq("id", d.id).select("id"));
+                if (!borradas.length) throw new ErrorFen("No se pudo quitar: ejecutá en Supabase la migración 20261127000500_estado_por_fechas.sql.");
+                exito("Estudiante quitado del curso.");
+            },
             async subirRecurso(d) {
                 const enlace = nulo(d.enlace);
                 if (!d.archivo && !enlace) throw new ErrorFen("Subí un archivo o escribí un enlace.");

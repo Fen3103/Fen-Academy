@@ -2759,3 +2759,13 @@ form.sacudir{ animation:sacudir .35s ease; }
 /* El nombre y el avatar ya están en la barra lateral: en la barra superior solo en celular */
 .topbar-avatar{ display:none !important; text-decoration:none !important; }
 @media(max-width:850px){ .topbar-avatar{ display:grid !important; place-items:center; color:var(--acento-2) !important; } }
+
+/* Estado por fechas y nota */
+.estado-celda{ display:flex; align-items:center; gap:8px; justify-content:space-between; min-width:150px; }
+.estado-celda .icono-solo{ width:32px; height:32px; min-width:32px; padding:0; display:grid; place-items:center; }
+.estado-celda .icono-solo .icono{ width:15px; height:15px; }
+.nota-total.texto-verde{ color:var(--ok-txt); }
+.form-seccion{ display:flex; align-items:center; gap:8px; font-size:14px; margin:18px 0 4px; padding-top:14px; border-top:1px solid rgba(var(--tinta-rgb),.08); color:var(--texto); }
+.form-seccion .icono{ width:16px; height:16px; color:var(--acento); }
+.curso-periodo{ display:flex; align-items:center; gap:6px; font-size:14px !important; margin-top:6px; opacity:.9; }
+.curso-periodo .icono{ width:15px; height:15px; }
