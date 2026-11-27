@@ -96,15 +96,15 @@ async function cargarPerfil() {
 function itemsMenu(rutaActual) {
     const items = {
         estudiante: [["inicio", "Inicio"], ["matricula", "Matrícula"], ["plan", "Plan de estudio"], ["progreso", "Progreso"], ["calendario", "Calendario"]],
-        profesor: [["docente", "Mis cursos"], ["catalogo", "Cursos para impartir"], ["calendario", "Calendario"]],
-        admin: [["admin", "Administración"], ["docente", "Panel docente"]],
+        profesor: [["docente", "Mis cursos"], ["catalogo", "Cursos para impartir"], ["calendario", "Calendario"], ["titulo", "Títulos"]],
+        admin: [["admin", "Administración"], ["docente", "Panel docente"], ["titulo", "Títulos"]],
     }[perfil.rol];
     const activo = r => {
         const raiz = rutaActual.split("/")[0];
-        if (r === "progreso") return ["progreso", "curso", "actividad", "examen", "certificado", "titulo"].includes(raiz);
+        if (r === "progreso" && perfil.rol === "estudiante") return ["progreso", "curso", "actividad", "examen", "certificado", "titulo"].includes(raiz);
         return raiz === r;
     };
-    const ICONO = { inicio: "home", matricula: "matricula", progreso: "chart", docente: "class", catalogo: "capas", calendario: "calendar", plan: "capas", admin: "shield", perfil: "user", ajustes: "engranaje" };
+    const ICONO = { inicio: "home", matricula: "matricula", progreso: "chart", docente: "class", catalogo: "capas", calendario: "calendar", plan: "capas", admin: "shield", titulo: "award", perfil: "user", ajustes: "engranaje" };
     return { items, activo, ICONO };
 }
 

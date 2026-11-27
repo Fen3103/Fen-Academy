@@ -2967,3 +2967,13 @@ html[data-tema="claro"] .nivel-badge.nivel-proyecto{ color:#7e22ce; }
 .profile-hero .perfil-editar{ margin-left:auto; display:inline-flex; align-items:center; gap:8px; text-decoration:none; white-space:nowrap; }
 .profile-hero .perfil-editar .icono{ width:16px; height:16px; }
 @media(max-width:700px){ .profile-hero{ flex-wrap:wrap; } .profile-hero .perfil-editar{ margin-left:0; width:100%; justify-content:center; } }
+
+/* Generador de títulos (profesor) */
+.titulo-generador{ margin-bottom:16px; }
+.titulo-generador .panel-title{ display:flex; align-items:center; gap:8px; }
+.titulo-generador .panel-title .icono{ width:18px; height:18px; color:var(--acento); }
+.titulo-generador-campos{ display:grid; grid-template-columns:1.4fr 1.4fr 1fr; gap:14px; padding:16px 18px 4px; }
+.titulo-generador-campos .form-grupo{ display:flex; flex-direction:column; gap:6px; }
+.titulo-generador .panel-help{ padding:0 18px 16px; margin:8px 0 0; }
+@media(max-width:800px){ .titulo-generador-campos{ grid-template-columns:1fr; } }
+@media print{ .no-imprimir{ display:none !important; } }

@@ -85,8 +85,23 @@ export async function titulo({ perfil }) {
     }
     const t = { ...tituloDe(cursos, estadoDe), mayor: true };
     const d = new Date();
-    const profesores = [...new Set(t.cursos.map(c => c.profesor?.nombre).filter(Boolean))];
-    const volver = demo ? ["docente", "Volver"] : ["progreso", "Volver a Progreso"];
+    // Profesor/admin: el título lo firma quien lo emite.
+    const profesores = demo ? [perfil.nombre] : [...new Set(t.cursos.map(c => c.profesor?.nombre).filter(Boolean))];
+    const volver = demo ? null : ["progreso", "Volver a Progreso"];
+
+    // Profesor/admin: lista de sus estudiantes con cuántos cursos aprobaron, para emitir el título a mano.
+    let alumnos = [];
+    if (demo) {
+        const mats = await q(sb.from("matriculas").select("user_id, estado, curso:cursos(profesor_id), alumno:perfiles(id, nombre)")).catch(() => []);
+        const porId = new Map();
+        for (const m of mats) {
+            if (!m.alumno || (perfil.rol !== "admin" && m.curso?.profesor_id !== perfil.id)) continue;
+            const a = porId.get(m.user_id) ?? { id: m.user_id, nombre: m.alumno.nombre, aprobados: 0, cursos: 0 };
+            a.cursos++; if (m.estado === "Aprobado") a.aprobados++;
+            porId.set(m.user_id, a);
+        }
+        alumnos = [...porId.values()].sort((a, b) => a.nombre.localeCompare(b.nombre, "es"));
+    }
 
     if (!demo && !t.completo) {
         const faltan = t.cursos.filter(c => estadoDe.get(c.id) !== "Aprobado");
@@ -106,11 +121,28 @@ export async function titulo({ perfil }) {
     }
 
     const nombre = demo ? "Nombre del Estudiante" : perfil.nombre;
+    const hoyISO = d.toISOString().slice(0, 10);
     return {
         titulo: t.nombre, seccion: "Título", volver,
         html: html`
+${demo ? html`
+<section class="course-panel titulo-generador no-imprimir">
+    <div class="panel-title">${icono("award")} Crear título</div>
+    <div class="titulo-generador-campos">
+        <div class="form-grupo"><label for="tg-alumno">Estudiante</label>
+            <select id="tg-alumno">
+                <option value="">— Escribir un nombre a mano —</option>
+                ${alumnos.map(a => html`<option value="${a.id}" data-nombre="${a.nombre}">${a.nombre} · aprobó ${a.aprobados} de ${t.cursos.length}</option>`)}
+            </select></div>
+        <div class="form-grupo"><label for="tg-nombre">Nombre en el título</label>
+            <input id="tg-nombre" type="text" placeholder="Nombre completo del estudiante" maxlength="60"></div>
+        <div class="form-grupo"><label for="tg-fecha">Fecha</label>
+            <input id="tg-fecha" type="date" value="${hoyISO}"></div>
+    </div>
+    <p class="muted panel-help">Elegí un estudiante o escribí el nombre, revisá la vista previa y tocá <strong>Imprimir o guardar como PDF</strong>.
+        Es un título simbólico: no queda guardado en el sistema.</p>
+</section>` : ""}
 <div class="cert-acciones">
-    ${demo ? html`<span class="etq">Vista previa: así lo recibe un estudiante</span>` : ""}
     <button type="button" class="admin-btn" data-imprimir>${icono("download")} Imprimir o guardar como PDF</button>
 </div>
 <div class="diploma-escena">
@@ -126,12 +158,12 @@ export async function titulo({ perfil }) {
         </header>
 
         <p class="dip-por">Por cuanto</p>
-        <h2 class="dip-nombre">${nombre}</h2>
+        <h2 class="dip-nombre" id="dip-nombre">${nombre}</h2>
         <p class="dip-texto">ha cumplido con todos los requisitos del programa de <strong>${t.area}</strong>,
             aprobando ${t.cursos.length === 1 ? "el curso" : `los ${t.cursos.length} cursos`} que lo componen, por lo que se le otorga el título de</p>
         <h1 class="dip-titulo">${t.nombre}</h1>
         <div class="dip-cursos">${t.cursos.slice(0, 24).map(c => html`<span>${c.codigo}</span>`)}${t.cursos.length > 24 ? html`<span>+${t.cursos.length - 24}</span>` : ""}</div>
-        <p class="dip-fecha">Dado en Fen Academy, a los ${d.getDate()} días del mes de ${MESES[d.getMonth()]} de ${d.getFullYear()}.</p>
+        <p class="dip-fecha" id="dip-fecha">Dado en Fen Academy, a los ${d.getDate()} días del mes de ${MESES[d.getMonth()]} de ${d.getFullYear()}.</p>
 
         <footer class="dip-firmas">
             <div class="dip-firma"><span class="dip-rubrica">${profesores[0] ?? "Equipo docente"}</span><span class="dip-linea"></span>
@@ -140,9 +172,23 @@ export async function titulo({ perfil }) {
             <div class="dip-firma"><span class="dip-rubrica">Fen Academy</span><span class="dip-linea"></span><small>Dirección académica</small></div>
         </footer>
 
-        <p class="dip-pie">Código ${codigo(demo ? "demo" : perfil.id, t.clave)} · Título simbólico emitido por Fen Academy, sin validez oficial.</p>
+        <p class="dip-pie">Código <span id="dip-codigo">${codigo(demo ? "demo" : perfil.id, t.clave)}</span> · Título simbólico emitido por Fen Academy, sin validez oficial.</p>
     </div>
 </article>
 </div>`,
+        alMontar: demo ? () => {
+            const sel = document.getElementById("tg-alumno"), inp = document.getElementById("tg-nombre"), fec = document.getElementById("tg-fecha");
+            const actualizar = () => {
+                const nom = inp.value.trim() || "Nombre del Estudiante";
+                document.getElementById("dip-nombre").textContent = nom;
+                document.getElementById("dip-codigo").textContent = codigo(sel.value || `manual|${nom.toLowerCase()}`, t.clave);
+                const [y, m, dd] = (fec.value || hoyISO).split("-").map(Number);
+                document.getElementById("dip-fecha").textContent = `Dado en Fen Academy, a los ${dd} días del mes de ${MESES[m - 1]} de ${y}.`;
+                document.title = `Título · ${nom}`;
+            };
+            sel.addEventListener("change", () => { inp.value = sel.selectedOptions[0]?.dataset.nombre ?? ""; actualizar(); });
+            inp.addEventListener("input", actualizar);
+            fec.addEventListener("input", actualizar);
+        } : undefined,
     };
 }
