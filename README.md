@@ -23,6 +23,24 @@ Las cuentas nuevas se registran siempre como **estudiante**; el admin las convie
 - El profesor puede marcar a mano una respuesta como correcta o incorrecta, y la nota se recalcula.
 - Opcional: mostrar la corrección al estudiante después de enviar.
 
+## Laboratorio
+
+Cada curso tiene un apartado **Laboratorio** (junto a Clases y Evaluación) para escribir y ejecutar código desde la computadora o el celular, sin instalar nada:
+
+| Curso | Laboratorio | Cómo se ejecuta |
+|---|---|---|
+| Lógica de programación | Pseudocódigo en español (tipo PSeInt) con **paso a paso** (prueba de escritorio) | Intérprete propio ([`web/js/lab/pseudo.js`](web/js/lab/pseudo.js)) |
+| Python, Estructuras de datos | Python 3 | Pyodide |
+| JavaScript | JavaScript | El navegador |
+| HTML y CSS, Cómo funciona la web | Vista previa en vivo con consola | iframe aislado |
+| Bases de datos | SQL (SQLite) con resultados en tablas | sql.js |
+
+- **Cada lenguaje tiene su propio ejecutor**: el curso decide cuál se abre, así un curso de Java nunca ejecuta Python. C#, Java, Git, Computación básica y el Proyecto integrador todavía no tienen laboratorio.
+- **Aislado de la plataforma**: el código corre en un *worker* (o en un iframe sin acceso a la página), sin acceso a la sesión ni a Supabase. Si tarda más de 10 segundos se detiene.
+- **Entrada**: los datos para `Leer`, `input()` o `prompt()` se escriben antes, uno por línea.
+- **Pruebas**: cada prueba tiene una entrada y la salida esperada; *Probar* las ejecuta todas y marca cuáles pasan.
+- El código y las pruebas se guardan en ese navegador, por cuenta y por curso. *Descargar* baja el archivo para entregarlo.
+
 ## Materias y niveles
 
 - Cada curso tiene un **código único** (`PY-1`, `JS-1`, `JAVA-1`…). Así Java y JavaScript no se confunden.
@@ -78,6 +96,7 @@ web/                         la página que se publica
   js/ui.js                   escapado de HTML, chips de estado, fechas, mensajes
   js/main.js                 sesión, menú según el rol y navegación (#/ruta)
   js/vistas/                 pantallas: auth, estudiante, profesor, admin, cuenta
+  js/lab/                    laboratorio: editor, intérprete de pseudocódigo y un worker por lenguaje
 supabase/migrations/         tablas, reglas de seguridad (RLS), funciones y datos de ejemplo
 supabase/pruebas/            73 pruebas de la base en un Postgres en memoria
 .github/workflows/           pruebas (ci.yml) y publicación en Pages (pages.yml)

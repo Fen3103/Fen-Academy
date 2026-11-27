@@ -7,6 +7,7 @@ const MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "
 
 // "*" para incluir fecha_inicio/fecha_fin/nota_minima si la migración ya está (y no fallar si no).
 import { tarjetaTitulos } from "./titulo.js";
+import { labDe, contenedorLab, montarLab } from "../lab/indice.js";
 
 const CURSO_COLS = "*, profesor:perfiles!cursos_profesor_id_fkey(nombre)";
 
@@ -388,7 +389,7 @@ export async function certificado({ perfil, params }) {
 
 // ------------------------------------------------------------------- curso ---
 
-export async function curso({ perfil, params, query }) {
+export async function curso({ perfil, params, query, alSalir }) {
     const id = Number(params.id);
     const [mat] = await q(sb.from("matriculas").select(`estado, curso:cursos(${CURSO_COLS})`).eq("user_id", perfil.id).eq("curso_id", id));
     if (!mat) throw new ErrorFen("No estás matriculado en este curso.");
@@ -400,19 +401,24 @@ export async function curso({ perfil, params, query }) {
     ]);
     const c = mat.curso;
     const r = resumen(actividades, ultimas);
+    const lab = labDe(c.lenguaje);
     const tab = query.get("tab") || "clases";
 
     return {
         titulo: c.nombre,
+        alMontar: raiz => montarLab(raiz, alSalir),
         html: html`
 <section class="course-banner ${claseLenguaje(c.lenguaje)}"><div class="course-banner-overlay">
     <h1>${c.nombre}</h1>
     <p>${c.codigo} · ${c.lenguaje} · Nivel ${c.nivel} · Profesor: ${c.profesor?.nombre ?? "por asignar"} · ${chipMatricula(mat.estado, c)}</p>
     ${periodoCurso(c) || c.nota_minima != null ? html`<p class="curso-periodo">${periodoCurso(c) ? html`${icono("calendar")} ${periodoCurso(c)}` : ""}${periodoCurso(c) && c.nota_minima != null ? " · " : ""}${c.nota_minima != null ? `Aprobás con ${num(c.nota_minima)}%` : ""}</p>` : ""}
 </div></section>
-${tabs([{ id: "clases", texto: "Clases", icono: "class" }, { id: "evaluacion", texto: "Evaluación", icono: "eval" },
+${tabs([{ id: "clases", texto: "Clases", icono: "class" },
+        ...(lab ? [{ id: "laboratorio", texto: "Laboratorio", icono: "codigo" }] : []),
+        { id: "evaluacion", texto: "Evaluación", icono: "eval" },
         { id: "anuncios", texto: "Anuncios", icono: "megafono", contador: anuncios.filter(an => Date.now() - new Date(an.fecha) < 7 * 864e5).length || null },
         { id: "recursos", texto: "Recursos", icono: "folder" }], tab)}
+${lab ? html`<div ${raw(panelTab("laboratorio", tab))}>${raw(contenedorLab(c, lab, perfil.id))}</div>` : ""}
 
 <div ${raw(panelTab("anuncios", tab))}>
     <div class="anuncios-lista">

@@ -4,6 +4,7 @@ import { sb, q, rpc, ErrorFen, subirArchivo, descargar, borrarArchivos, EXT_RECU
 import { html, raw, num, pct, fecha, fechaHora, chipEntrega, chipTipo, tabs, panelTab, enlaceExterno, exito, hoy, claseLenguaje, icono, iconoTipo, celdaFecha, etiquetasActividad, compararLenguajes, fechaDMA, vencida, periodoCurso, chipMatricula, nivelBadge } from "../ui.js";
 import { listaRecursos, preguntaCorregida } from "./estudiante.js";
 import { AYUDA_MD } from "../md.js";
+import { labDe, contenedorLab, montarLab } from "../lab/indice.js";
 const EXT_ENTREGAS_TXT = EXT_ENTREGAS.join(", ") + " · máx. 16 MB";
 
 const ESTADOS_ENTREGA = ["Pendiente", "Revisado", "Aprobado", "Rechazado"];
@@ -168,7 +169,7 @@ export async function catalogo({ perfil }) {
 
 // ------------------------------------------------------------------- curso ---
 
-export async function curso({ perfil, params, query }) {
+export async function curso({ perfil, params, query, alSalir }) {
     const id = Number(params.id);
     const [c] = await q(sb.from("cursos").select("*").eq("id", id));
     if (!c) throw new ErrorFen("El curso no existe.");
@@ -189,6 +190,7 @@ export async function curso({ perfil, params, query }) {
     const porRevisar = entregas.filter(e => e.estado === "Pendiente").length;
     const siguiente = clases.length ? Math.max(...clases.map(x => x.orden)) + 1 : 1;
     const tab = query.get("tab") || "clases";
+    const lab = labDe(c.lenguaje);
     const conFechas = "nota_minima" in c;   // la migración de estados ya está aplicada
     const minima = Number(c.nota_minima ?? 70);
 
@@ -237,11 +239,14 @@ export async function curso({ perfil, params, query }) {
     <h1>${c.nombre}</h1>
     <p>${c.codigo} · ${c.lenguaje} · Nivel ${c.nivel} · ${matriculas.length} estudiantes · Vista docente</p>
 </div></section>
-${tabs([{ id: "clases", texto: "Clases", icono: "class" }, { id: "evaluacion", texto: "Evaluación", icono: "eval" },
+${tabs([{ id: "clases", texto: "Clases", icono: "class" },
+        ...(lab ? [{ id: "laboratorio", texto: "Laboratorio", icono: "codigo" }] : []),
+        { id: "evaluacion", texto: "Evaluación", icono: "eval" },
         { id: "entregas", texto: "Entregas", icono: "inbox", contador: porRevisar },
         { id: "estudiantes", texto: "Estudiantes", icono: "users" }, { id: "anuncios", texto: "Anuncios", icono: "megafono" },
         { id: "recursos", texto: "Recursos", icono: "folder" },
         { id: "datos", texto: "Datos del curso", icono: "settings" }], tab)}
+${lab ? html`<div ${raw(panelTab("laboratorio", tab))}>${raw(contenedorLab(c, lab, perfil.id))}</div>` : ""}
 
 <div ${raw(panelTab("clases", tab))}>
     <section class="teacher-grid">
@@ -463,6 +468,7 @@ ${tabs([{ id: "clases", texto: "Clases", icono: "class" }, { id: "evaluacion", t
     </section>
 </div>`,
         alMontar(raiz) {
+            montarLab(raiz, alSalir);
             // Filtro de entregas: por calificar / todas.
             const filas = [...raiz.querySelectorAll(".entrega-fila")];
             const vacio = raiz.querySelector(".entregas-vacio");
