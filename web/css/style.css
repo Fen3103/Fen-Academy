@@ -2963,3 +2963,7 @@ html[data-tema="claro"] .nivel-badge.nivel-proyecto{ color:#7e22ce; }
 .bienvenida-curso small{ display:flex; align-items:center; gap:6px; color:var(--texto-3); }
 .bienvenida-curso small .icono{ width:14px; height:14px; }
 @media(max-width:520px){ .bienvenida-curso{ flex-wrap:wrap; } .bienvenida-curso .admin-btn{ width:100%; } }
+
+.profile-hero .perfil-editar{ margin-left:auto; display:inline-flex; align-items:center; gap:8px; text-decoration:none; white-space:nowrap; }
+.profile-hero .perfil-editar .icono{ width:16px; height:16px; }
+@media(max-width:700px){ .profile-hero{ flex-wrap:wrap; } .profile-hero .perfil-editar{ margin-left:0; width:100%; justify-content:center; } }
