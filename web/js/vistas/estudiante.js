@@ -1,7 +1,7 @@
 // Pantallas del ESTUDIANTE: inicio, matrícula, progreso, curso, actividad y examen.
 import { sb, q, rpc, ErrorFen, subirArchivo, descargar, EXT_ENTREGAS, ultimaPorActividad, resumen, aporte, requisito, mezclar } from "../api.js";
 import { html, raw, num, pct, fecha, fechaHora, vencida, chipEntrega, chipMatricula, periodoCurso, chipTipo, tabs, panelTab,
-         enlaceExterno, exito, NOTICIAS, claseLenguaje, icono, iconoTipo, celdaFecha, etiquetasActividad, bloqueCurso, fechaDMA, compararLenguajes, ISOTIPO } from "../ui.js";
+         enlaceExterno, exito, NOTICIAS, claseLenguaje, icono, iconoTipo, celdaFecha, etiquetasActividad, bloqueCurso, fechaDMA, compararLenguajes, ISOTIPO, nivelBadge, esProyecto } from "../ui.js";
 
 const MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
 
@@ -18,6 +18,9 @@ async function misMatriculas(uid) {
 
 export async function inicio({ perfil }) {
     const matriculas = await misMatriculas(perfil.id);
+    // Alumno nuevo: le mostramos los cursos de nivel 1 que alguien está dando.
+    const abiertos = matriculas.length ? [] : (await q(sb.from("cursos").select(CURSO_COLS).order("lenguaje").order("nivel")))
+        .filter(c => c.profesor && c.nivel === 1);
     const cursando = matriculas.filter(m => m.estado === "Cursando").map(m => m.curso_id);
     const [actividades, entregas] = await Promise.all([
         cursando.length ? q(sb.from("actividades").select("id, titulo, tipo, fecha_limite, curso_id, curso:cursos(codigo, nombre)").in("curso_id", cursando)) : [],
@@ -76,8 +79,20 @@ export async function inicio({ perfil }) {
                     </div>
                 </div>
             </a>`)}
-            ${matriculas.length ? "" : html`<div class="vacio">${icono("class")}<h3>Sin cursos todavía</h3>
-                <p>Entrá a <a href="#/matricula">Matrícula</a> y elegí tu primer curso.</p></div>`}
+            ${matriculas.length ? "" : abiertos.length ? html`
+            <div class="bienvenida-alumno">
+                <h3>¡Bienvenido/a! Empezá por acá</h3>
+                <p>Matriculate en un curso abierto y entrá directo a tus clases.</p>
+                ${abiertos.map(c => html`
+                <div class="bienvenida-curso ${claseLenguaje(c.lenguaje)}">
+                    ${bloqueCurso(c)}
+                    <div><strong>${c.codigo} · ${c.nombre}</strong><small>${icono("user")} ${c.profesor.nombre}</small></div>
+                    <button type="button" class="admin-btn" data-accion="matricularInicio" data-id="${c.id}"
+                        data-confirm="¿Matricularte en ${c.nombre}?" data-boton="Matricularme">Matricularme</button>
+                </div>`)}
+                <p class="muted"><a href="#/matricula">Ver todos los cursos</a></p>
+            </div>` : html`<div class="vacio">${icono("class")}<h3>Sin cursos todavía</h3>
+                <p>Todavía no hay cursos abiertos. Tu profesor te avisa cuando habilite el primero.</p></div>`}
         </div>
     </div>
     <aside class="columna-lateral">
@@ -117,6 +132,9 @@ export async function inicio({ perfil }) {
         </div>
     </aside>
 </section>`,
+        acciones: {
+            async matricularInicio(d) { exito(await rpc("matricular", { p_curso: Number(d.id) })); },
+        },
     };
 }
 
@@ -144,7 +162,7 @@ export async function matricula({ perfil }) {
     const NIVELES = { 1: "Principiante", 2: "Intermedio", 3: "Avanzado" };
     const fila = f => html`
         <div class="nivel-fila ${f.estado ? "es-mio" : ""} ${f.bloqueado ? "bloqueada" : ""}">
-            <span class="nivel-badge nivel-${Math.min(f.c.nivel, 3)}">${NIVELES[f.c.nivel] || "Nivel " + f.c.nivel}</span>
+            ${nivelBadge(f.c)}
             <div class="nivel-info">
                 <h3>${f.c.codigo} · ${f.c.nombre}</h3>
                 <p>${icono("user")} ${f.c.profesor?.nombre ?? "Por asignar"}${f.c.descripcion ? ` · ${f.c.descripcion}` : ""}</p>
@@ -164,7 +182,7 @@ export async function matricula({ perfil }) {
         html: html`
 <div class="hero-dashboard-card"><div class="hero-dashboard-text">
     <h1>Matrícula</h1>
-    <p>Elegí tus cursos. El primer nivel de cada tema está abierto; para el siguiente, tu profesor te marca como <strong>Aprobado</strong> en el anterior.</p>
+    <p>Elegí tus cursos. El primer nivel de cada tema está abierto; el siguiente se habilita cuando <strong>aprobás</strong> el anterior.</p>
 </div></div>
 <section class="course-panel">
     <div class="panel-title">Cursos abiertos · ${visibles.length}</div>
@@ -290,7 +308,7 @@ function nodoPlan(c, estadoDe) {
         : e === "Reprobado" ? ["mal", "Reprobado"] : abierto ? ["libre", "Abierto · matriculate"] : ["pronto", "Próximamente"];
     const cuerpo = html`
         <span class="camino-punto">${e === "Aprobado" ? icono("ok") : abierto || e ? c.nivel : icono("clock")}</span>
-        <span class="camino-texto"><strong>${c.codigo} · ${c.nombre}</strong><small>${NIVEL_TXT[c.nivel] || "Nivel " + c.nivel} · ${texto}</small></span>`;
+        <span class="camino-texto"><strong>${c.codigo} · ${c.nombre}</strong><small>${esProyecto(c) ? "Proyecto final" : NIVEL_TXT[c.nivel] || "Nivel " + c.nivel} · ${texto}</small></span>`;
     if (e) return html`<a class="camino-nodo ${clase}" href="#/curso/${c.id}" title="${c.descripcion || c.nombre}">${cuerpo}</a>`;
     if (abierto) return html`<a class="camino-nodo ${clase}" href="#/matricula" title="${c.descripcion || c.nombre}">${cuerpo}</a>`;
     return html`<div class="camino-nodo ${clase}" title="Todavía no tiene profesor asignado">${cuerpo}</div>`;

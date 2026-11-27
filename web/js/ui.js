@@ -183,6 +183,14 @@ export const compararLenguajes = (a, b) => posLenguaje(a) - posLenguaje(b) || St
 export const fechaDMA = d => (d ? String(d).slice(0, 10).split("-").reverse().join("/") : "Sin fecha");
 
 /** Círculo de color con el ícono del tipo de actividad. */
+/** Etiqueta del nivel; el proyecto integrador lleva "Proyecto final". */
+export const esProyecto = c => /^PROY/i.test(c?.codigo || "") || /proyecto/i.test(c?.lenguaje || "");
+export function nivelBadge(c) {
+    if (esProyecto(c)) return html`<span class="nivel-badge nivel-proyecto">Proyecto final</span>`;
+    const t = { 1: "Principiante", 2: "Intermedio", 3: "Avanzado" }[c.nivel] || "Nivel " + c.nivel;
+    return html`<span class="nivel-badge nivel-${Math.min(c.nivel, 3)}">${t}</span>`;
+}
+
 export const iconoTipo = t => html`<span class="tipo-circulo ${t === "examen" ? "tipo-examen" : "tipo-entrega"}"
     title="${t === "examen" ? "Examen" : "Entrega"}">${icono(t === "examen" ? "star" : "upload")}</span>`;
 

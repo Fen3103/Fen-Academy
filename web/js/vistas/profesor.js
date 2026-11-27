@@ -1,7 +1,7 @@
 // Pantallas del PROFESOR (y del admin en el "panel docente").
 // La base solo deja ver y modificar los cursos asignados al profesor.
 import { sb, q, rpc, ErrorFen, subirArchivo, descargar, borrarArchivos, EXT_RECURSOS, EXT_ENTREGAS, ultimaPorActividad, resumen } from "../api.js";
-import { html, raw, num, pct, fecha, fechaHora, chipEntrega, chipTipo, tabs, panelTab, enlaceExterno, exito, hoy, claseLenguaje, icono, iconoTipo, celdaFecha, etiquetasActividad, compararLenguajes, fechaDMA, vencida, periodoCurso, chipMatricula } from "../ui.js";
+import { html, raw, num, pct, fecha, fechaHora, chipEntrega, chipTipo, tabs, panelTab, enlaceExterno, exito, hoy, claseLenguaje, icono, iconoTipo, celdaFecha, etiquetasActividad, compararLenguajes, fechaDMA, vencida, periodoCurso, chipMatricula, nivelBadge } from "../ui.js";
 import { listaRecursos, preguntaCorregida } from "./estudiante.js";
 import { AYUDA_MD } from "../md.js";
 const EXT_ENTREGAS_TXT = EXT_ENTREGAS.join(", ") + " · máx. 16 MB";
@@ -88,7 +88,7 @@ export async function catalogo({ perfil }) {
         const mio = c.profesor_id === perfil.id;
         return html`
         <div class="nivel-fila ${mio ? "es-mio" : ""}">
-            <span class="nivel-badge nivel-${Math.min(c.nivel, 3)}">${NIVELES[c.nivel] || "Nivel " + c.nivel}</span>
+            ${nivelBadge(c)}
             <div class="nivel-info">
                 <h3>${c.codigo} · ${c.nombre}</h3>
                 ${c.descripcion ? html`<p>${c.descripcion}</p>` : ""}
@@ -111,7 +111,7 @@ export async function catalogo({ perfil }) {
 </div></div>
 <section class="course-panel">
     <div class="panel-title panel-title-acciones">
-        <span>Catálogo · das ${doy} de ${todos.length}</span>
+        <span>Catálogo · impartís ${doy} de ${todos.length}</span>
         <button type="button" class="admin-btn" data-toggle="crear-curso">+ Crear curso</button>
     </div>
     <div id="crear-curso" class="resource-form-panel"><div class="admin-course-form">
@@ -137,7 +137,7 @@ export async function catalogo({ perfil }) {
                 <div class="lenguaje-thumb ${claseLenguaje(g.nombre)}"></div>
                 <div>
                     <h2>${g.nombre}</h2>
-                    <p>${g.cursos.length} ${g.cursos.length === 1 ? "nivel" : "niveles"} · das ${g.cursos.filter(c => c.profesor_id === perfil.id).length}</p>
+                    <p>${g.cursos.length} ${g.cursos.length === 1 ? "nivel" : "niveles"} · impartís ${g.cursos.filter(c => c.profesor_id === perfil.id).length}</p>
                 </div>
             </div>
             <div class="niveles">${g.cursos.map(fila)}</div>

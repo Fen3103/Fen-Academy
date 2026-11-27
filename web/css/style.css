@@ -2951,3 +2951,15 @@ form.sacudir{ animation:sacudir .35s ease; }
     .act-tabla:not(.libro-notas) .celda-calif{ display:flex; flex-direction:column; align-items:flex-end; }
     .act-tabla:not(.libro-notas) .tipo-icono, .act-tabla:not(.libro-notas) td:nth-child(1) > *{ width:40px; height:40px; }
 }
+
+.nivel-badge.nivel-proyecto{ background:rgba(168,85,247,.16); color:#c084fc; }
+html[data-tema="claro"] .nivel-badge.nivel-proyecto{ color:#7e22ce; }
+.bienvenida-alumno{ grid-column:1 / -1; display:flex; flex-direction:column; gap:10px; }
+.bienvenida-alumno h3{ margin:0; font-size:18px; }
+.bienvenida-alumno > p{ margin:0; color:var(--texto-3); }
+.bienvenida-curso{ display:flex; align-items:center; gap:14px; padding:12px; border-radius:14px; background:var(--campo); border:1px solid rgba(var(--tinta-rgb),.07); }
+.bienvenida-curso .curso-bloque{ flex:0 0 64px; height:64px; }
+.bienvenida-curso > div:nth-child(2){ flex:1; min-width:0; display:flex; flex-direction:column; gap:4px; }
+.bienvenida-curso small{ display:flex; align-items:center; gap:6px; color:var(--texto-3); }
+.bienvenida-curso small .icono{ width:14px; height:14px; }
+@media(max-width:520px){ .bienvenida-curso{ flex-wrap:wrap; } .bienvenida-curso .admin-btn{ width:100%; } }

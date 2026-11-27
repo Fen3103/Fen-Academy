@@ -25,7 +25,7 @@ export function login() {
     <input type="password" name="password" placeholder="Contraseña" required autocomplete="current-password">
     <button type="submit">Entrar</button>
 </form>
-<p style="margin-top:16px;">¿No tenés cuenta? <a href="#/registro">Registrate como estudiante</a></p>
+<p style="margin-top:16px;">¿Primera vez? <a href="#/registro">Creá tu cuenta de estudiante</a>: después elegís tu curso y entrás a clase.</p>
 <p><a href="#/recuperar">¿Olvidaste tu contraseña?</a></p>`,
         acciones: {
             async entrar(d) {
