@@ -408,7 +408,7 @@ export async function curso({ perfil, params, query }) {
 <section class="course-banner ${claseLenguaje(c.lenguaje)}"><div class="course-banner-overlay">
     <h1>${c.nombre}</h1>
     <p>${c.codigo} · ${c.lenguaje} · Nivel ${c.nivel} · Profesor: ${c.profesor?.nombre ?? "por asignar"} · ${chipMatricula(mat.estado, c)}</p>
-    ${periodoCurso(c) || c.nota_minima != null ? html`<p class="curso-periodo">${periodoCurso(c) ? html`${icono("calendar")} ${periodoCurso(c)}` : ""}${periodoCurso(c) && c.nota_minima != null ? " · " : ""}${c.nota_minima != null ? `Aprobás con ${num(c.nota_minima)}/100` : ""}</p>` : ""}
+    ${periodoCurso(c) || c.nota_minima != null ? html`<p class="curso-periodo">${periodoCurso(c) ? html`${icono("calendar")} ${periodoCurso(c)}` : ""}${periodoCurso(c) && c.nota_minima != null ? " · " : ""}${c.nota_minima != null ? `Aprobás con ${num(c.nota_minima)}%` : ""}</p>` : ""}
 </div></section>
 ${tabs([{ id: "clases", texto: "Clases", icono: "class" }, { id: "evaluacion", texto: "Evaluación", icono: "eval" },
         { id: "anuncios", texto: "Anuncios", icono: "megafono", contador: anuncios.filter(an => Date.now() - new Date(an.fecha) < 7 * 864e5).length || null },
@@ -456,8 +456,8 @@ ${tabs([{ id: "clases", texto: "Clases", icono: "class" }, { id: "evaluacion", t
                     ${actividades.map(a => {
                         const en = ultimas.get(a.id);
                         const calif = en?.nota != null
-                            ? html`<span class="calif-ok">${pct(aporte(a, en))}</span><small>${num(en.nota)}/100</small>`
-                            : en ? html`<span class="muted">Sin revisar</span>` : html`<span class="muted">—</span>`;
+                            ? html`<span class="calif-ok" title="Nota de la actividad: ${num(en.nota)}/100">${pct(aporte(a, en))}</span>`
+                            : en ? html`<span class="calif-pend">No revisado</span>` : html`<span class="muted">—</span>`;
                         return html`<tr class="click-row" data-href="#/actividad/${a.id}">
                             <td class="col-tipo">${iconoTipo(a.tipo)}</td>
                             <td><strong class="act-titulo">${a.titulo}</strong>${etiquetasActividad(a)}</td>
@@ -469,9 +469,9 @@ ${tabs([{ id: "clases", texto: "Clases", icono: "class" }, { id: "evaluacion", t
                     ${actividades.length ? "" : html`<tr><td colspan="6" class="vacio-celda">Tu profesor todavía no publicó actividades.</td></tr>`}
                 </tbody>
                 <tfoot><tr>
-                    <td colspan="4">Nota acumulada <small class="muted">· evaluado ${pct(r.evaluado)} de ${pct(r.total)}</small></td>
+                    <td colspan="4">Nota acumulada <small class="muted">· basada en las actividades evaluadas hasta el momento</small></td>
                     <td class="centro"><span class="valor-pill">${pct(r.total)}</span></td>
-                    <td class="centro"><strong class="nota-total">${num(r.nota)}/100</strong></td>
+                    <td class="centro"><span class="nota-pill" title="Obtenido / evaluado hasta ahora">${pct(r.nota)} / ${pct(r.evaluado)}</span></td>
                 </tr></tfoot>
             </table>
         </div>

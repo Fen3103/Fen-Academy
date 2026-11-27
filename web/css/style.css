@@ -2983,3 +2983,11 @@ html[data-tema="claro"] .nivel-badge.nivel-proyecto{ color:#7e22ce; }
 .dip-firmas.unica .dip-sello{ margin-bottom:0; }
 .dip-firmas.unica .dip-linea{ max-width:none; width:100%; }
 .diploma-mayor .dip-titulo{ font-size:5cqw; margin:1cqw 0 1.4cqw; }
+
+/* Notas en % del valor de cada actividad (como "5%" de "5%") */
+.calif-ok{ font-size:14px; }
+.calif-pend{ color:var(--texto-4); font-size:12px; font-weight:700; white-space:nowrap; }
+.nota-pill{
+    display:inline-block; white-space:nowrap; font-weight:800; font-size:15px; padding:6px 14px; border-radius:10px;
+    color:var(--ok-txt); background:rgba(34,197,94,.12); border:1px solid rgba(34,197,94,.45);
+}
