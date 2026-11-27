@@ -2982,3 +2982,4 @@ html[data-tema="claro"] .nivel-badge.nivel-proyecto{ color:#7e22ce; }
 .dip-firmas.unica{ grid-template-columns:auto minmax(0, 32cqw); justify-content:center; column-gap:4cqw; }
 .dip-firmas.unica .dip-sello{ margin-bottom:0; }
 .dip-firmas.unica .dip-linea{ max-width:none; width:100%; }
+.diploma-mayor .dip-titulo{ font-size:5cqw; margin:1cqw 0 1.4cqw; }

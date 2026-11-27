@@ -164,10 +164,9 @@ ${demo ? html`
 
         <p class="dip-por">Por cuanto</p>
         <h2 class="dip-nombre" id="dip-nombre">${nombre}</h2>
-        <p class="dip-texto">ha cumplido con todos los requisitos del <strong>${t.area}</strong>,
-            aprobando ${t.cursos.length === 1 ? "el curso" : `los ${t.cursos.length} cursos`} que lo componen, por lo que se le otorga el título de</p>
+        <p class="dip-texto">ha cumplido satisfactoriamente con todos los requisitos académicos del programa,
+            aprobando la totalidad de los cursos que lo conforman, por lo que se le otorga el título de</p>
         <h1 class="dip-titulo">${t.nombre}</h1>
-        <div class="dip-cursos">${t.cursos.slice(0, 24).map(c => html`<span>${c.codigo}</span>`)}${t.cursos.length > 24 ? html`<span>+${t.cursos.length - 24}</span>` : ""}</div>
         <p class="dip-fecha" id="dip-fecha">Dado en Fen Academy, a los ${d.getDate()} días del mes de ${MESES[d.getMonth()]} de ${d.getFullYear()}.</p>
 
         ${otros.length ? html`
