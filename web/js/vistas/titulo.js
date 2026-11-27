@@ -3,13 +3,16 @@
 import { sb, q } from "../api.js";
 import { html, raw, icono, ISOTIPO, compararLenguajes } from "../ui.js";
 
+// Quien firma como dirección académica (fundador de la academia).
+const DIRECTOR = "Derek Carranza";
+
 const MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
 
 /** El título del plan completo con su avance. */
 export function tituloDe(cursos, estadoDe) {
     const todos = [...cursos].sort((a, b) => compararLenguajes(a.lenguaje.toLowerCase(), b.lenguaje.toLowerCase()) || a.nivel - b.nivel);
     const aprobados = todos.filter(c => estadoDe.get(c.id) === "Aprobado").length;
-    return { clave: "plan", area: "Plan de estudio completo", nombre: "Desarrollador de Software", cursos: todos,
+    return { clave: "plan", area: "Plan de Estudio Completo", nombre: "Desarrollador de Software", cursos: todos,
         aprobados, completo: todos.length > 0 && aprobados === todos.length };
 }
 
@@ -87,6 +90,8 @@ export async function titulo({ perfil }) {
     const d = new Date();
     // Profesor/admin: el título lo firma quien lo emite.
     const profesores = demo ? [perfil.nombre] : [...new Set(t.cursos.map(c => c.profesor?.nombre).filter(Boolean))];
+    // Si el único que firma es el director, va una sola firma junto al sello.
+    const otros = profesores.filter(n => n.trim().toLowerCase() !== DIRECTOR.toLowerCase());
     const volver = demo ? null : ["progreso", "Volver a Progreso"];
 
     // Profesor/admin: lista de sus estudiantes con cuántos cursos aprobaron, para emitir el título a mano.
@@ -159,18 +164,23 @@ ${demo ? html`
 
         <p class="dip-por">Por cuanto</p>
         <h2 class="dip-nombre" id="dip-nombre">${nombre}</h2>
-        <p class="dip-texto">ha cumplido con todos los requisitos del programa de <strong>${t.area}</strong>,
+        <p class="dip-texto">ha cumplido con todos los requisitos del <strong>${t.area}</strong>,
             aprobando ${t.cursos.length === 1 ? "el curso" : `los ${t.cursos.length} cursos`} que lo componen, por lo que se le otorga el título de</p>
         <h1 class="dip-titulo">${t.nombre}</h1>
         <div class="dip-cursos">${t.cursos.slice(0, 24).map(c => html`<span>${c.codigo}</span>`)}${t.cursos.length > 24 ? html`<span>+${t.cursos.length - 24}</span>` : ""}</div>
         <p class="dip-fecha" id="dip-fecha">Dado en Fen Academy, a los ${d.getDate()} días del mes de ${MESES[d.getMonth()]} de ${d.getFullYear()}.</p>
 
+        ${otros.length ? html`
         <footer class="dip-firmas">
-            <div class="dip-firma"><span class="dip-rubrica">${profesores[0] ?? "Equipo docente"}</span><span class="dip-linea"></span>
-                <small>${profesores.length > 1 ? "Equipo docente" : "Profesor"}</small></div>
-            ${sello(`FEN ACADEMY · ${t.mayor ? "EXCELENCIA" : "TÍTULO"} · ${d.getFullYear()} · `)}
-            <div class="dip-firma"><span class="dip-rubrica">Fen Academy</span><span class="dip-linea"></span><small>Dirección académica</small></div>
-        </footer>
+            <div class="dip-firma"><span class="dip-rubrica">${otros.length === 1 ? otros[0] : "Equipo docente"}</span><span class="dip-linea"></span>
+                <small>${otros.length === 1 ? "Profesor" : "Profesores del plan"}</small></div>
+            ${sello(`FEN ACADEMY · EXCELENCIA · ${d.getFullYear()} · `)}
+            <div class="dip-firma"><span class="dip-rubrica">${DIRECTOR}</span><span class="dip-linea"></span><small>Dirección académica</small></div>
+        </footer>` : html`
+        <footer class="dip-firmas unica">
+            ${sello(`FEN ACADEMY · EXCELENCIA · ${d.getFullYear()} · `)}
+            <div class="dip-firma"><span class="dip-rubrica">${DIRECTOR}</span><span class="dip-linea"></span><small>Fundador y profesor · Fen Academy</small></div>
+        </footer>`}
 
         <p class="dip-pie">Código <span id="dip-codigo">${codigo(demo ? "demo" : perfil.id, t.clave)}</span> · Título simbólico emitido por Fen Academy, sin validez oficial.</p>
     </div>

@@ -2977,3 +2977,8 @@ html[data-tema="claro"] .nivel-badge.nivel-proyecto{ color:#7e22ce; }
 .titulo-generador .panel-help{ padding:0 18px 16px; margin:8px 0 0; }
 @media(max-width:800px){ .titulo-generador-campos{ grid-template-columns:1fr; } }
 @media print{ .no-imprimir{ display:none !important; } }
+
+/* Una sola firma (el fundador) junto al sello */
+.dip-firmas.unica{ grid-template-columns:auto minmax(0, 32cqw); justify-content:center; column-gap:4cqw; }
+.dip-firmas.unica .dip-sello{ margin-bottom:0; }
+.dip-firmas.unica .dip-linea{ max-width:none; width:100%; }
