@@ -2834,8 +2834,6 @@ form.sacudir{ animation:sacudir .35s ease; }
     background:linear-gradient(180deg, #c9962c, #8a5d0c); -webkit-background-clip:text; background-clip:text; color:transparent;
 }
 .diploma-mayor .dip-titulo{ font-size:48px; }
-.dip-cursos{ display:flex; flex-wrap:wrap; justify-content:center; gap:6px; max-width:720px; margin:2px auto 8px; }
-.dip-cursos span{ font-family:"JetBrains Mono", monospace; font-size:11px; padding:2px 8px; border:1px solid rgba(176,125,26,.5); border-radius:99px; color:#6b5532; background:rgba(255,250,235,.5); }
 .dip-fecha{ margin:6px 0 0; font-style:italic; font-size:17px; color:#4a3a20; }
 .dip-firmas{ display:grid; grid-template-columns:1fr auto 1fr; align-items:end; gap:20px; width:100%; max-width:780px; margin-top:auto; }
 .dip-firma{ display:flex; flex-direction:column; align-items:center; }
@@ -2864,8 +2862,6 @@ form.sacudir{ animation:sacudir .35s ease; }
 .dip-texto{ font-size:1.85cqw; max-width:66cqw; margin:.9cqw auto .3cqw; }
 .dip-titulo{ font-size:4.2cqw; margin:.5cqw 0 .7cqw; }
 .diploma-mayor .dip-titulo{ font-size:4.6cqw; }
-.dip-cursos{ gap:.5cqw; max-width:74cqw; margin:.2cqw auto .7cqw; }
-.dip-cursos span{ font-size:1.05cqw; padding:.15cqw .8cqw; }
 .dip-fecha{ font-size:1.65cqw; margin-top:.4cqw; }
 .dip-firmas{ gap:2cqw; max-width:80cqw; margin-top:1.6cqw; }
 .dip-rubrica{ font-size:2.9cqw; }
