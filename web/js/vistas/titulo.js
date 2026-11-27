@@ -47,7 +47,7 @@ function codigo(uid, clave) {
 }
 
 // Sello dorado con texto en círculo.
-function sello(texto) {
+function sello(arriba, abajo) {
     const puntas = 36, rExt = 58, rInt = 52;
     const pts = [];
     for (let i = 0; i < puntas * 2; i++) {
@@ -58,15 +58,17 @@ function sello(texto) {
         <defs>
             <radialGradient id="oro" cx="40%" cy="35%" r="70%"><stop offset="0" stop-color="#fff3b0"/><stop offset=".45" stop-color="#e2b13c"/><stop offset="1" stop-color="#9a6b12"/></radialGradient>
             <linearGradient id="cinta" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="var(--acento-osc)"/><stop offset="1" stop-color="var(--acento-2)"/></linearGradient>
-            <path id="circulo-texto" d="M60,60 m-37,0 a37,37 0 1,1 74,0 a37,37 0 1,1 -74,0"/>
+            <path id="arco-arriba" d="M24.26,69.58 A37,37 0 1,1 95.74,69.58"/><path id="arco-abajo" d="M17.5,60 a42.5,42.5 0 0,0 85,0"/>
         </defs>
         <path d="M38 95 L28 146 L42 136 L50 148 L58 100 Z" fill="url(#cinta)"/>
         <path d="M82 95 L92 146 L78 136 L70 148 L62 100 Z" fill="url(#cinta)"/>
         <polygon points="${pts.join(" ")}" fill="url(#oro)" stroke="#8a5d0c" stroke-width=".6"/>
         <circle cx="60" cy="60" r="46" fill="none" stroke="#8a5d0c" stroke-width="1"/>
         <circle cx="60" cy="60" r="29" fill="none" stroke="#8a5d0c" stroke-width=".8"/>
-        <text font-size="7.4" font-weight="700" letter-spacing="1.6" fill="#5c3d06" font-family="Cormorant Garamond, Georgia, serif">
-            <textPath href="#circulo-texto" startOffset="0">${texto}</textPath></text>
+        <text font-size="7.2" font-weight="700" letter-spacing="1.2" fill="#5c3d06" font-family="Cormorant Garamond, Georgia, serif">
+            <textPath href="#arco-arriba" startOffset="50%" text-anchor="middle">${arriba}</textPath></text>
+        <text font-size="7.4" font-weight="700" letter-spacing="2" fill="#5c3d06" font-family="Cormorant Garamond, Georgia, serif">
+            <textPath href="#arco-abajo" startOffset="50%" text-anchor="middle">· ${abajo} ·</textPath></text>
         <text x="60" y="70" text-anchor="middle" font-size="30" font-weight="700" fill="#5c3d06" font-family="Cormorant Garamond, Georgia, serif">F</text>
     </svg>`);
 }
@@ -173,11 +175,11 @@ ${demo ? html`
         <footer class="dip-firmas">
             <div class="dip-firma"><span class="dip-rubrica">${otros.length === 1 ? otros[0] : "Equipo docente"}</span><span class="dip-linea"></span>
                 <small>${otros.length === 1 ? "Profesor" : "Profesores del plan"}</small></div>
-            ${sello(`FEN ACADEMY · EXCELENCIA · ${d.getFullYear()} · `)}
+            ${sello("FEN ACADEMY · EXCELENCIA", String(d.getFullYear()))}
             <div class="dip-firma"><span class="dip-rubrica">${DIRECTOR}</span><span class="dip-linea"></span><small>Dirección académica</small></div>
         </footer>` : html`
         <footer class="dip-firmas unica">
-            ${sello(`FEN ACADEMY · EXCELENCIA · ${d.getFullYear()} · `)}
+            ${sello("FEN ACADEMY · EXCELENCIA", String(d.getFullYear()))}
             <div class="dip-firma"><span class="dip-rubrica">${DIRECTOR}</span><span class="dip-linea"></span><small>Fundador y profesor · Fen Academy</small></div>
         </footer>`}
 
