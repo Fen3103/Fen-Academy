@@ -258,17 +258,21 @@ ${lab ? html`<div ${raw(panelTab("laboratorio", tab))}>${raw(contenedorLab(c, la
                 <label>Contenido de la clase</label><textarea name="descripcion" rows="10" class="editor-codigo"
                     placeholder="Explicación, ejemplos de código, enlaces y videos…"></textarea>
                 <small>${AYUDA_MD}</small>
+                <label class="check"><input type="checkbox" name="borrador" value="1"> Guardar como borrador (tus estudiantes no la ven hasta que la publiques)</label>
                 <button type="submit" class="admin-btn">Guardar clase</button>
             </form>
         </div>
         <div class="course-panel">
-            <div class="panel-title">Clases publicadas</div>
+            <div class="panel-title">Clases</div>
             <div class="course-list">
                 ${clases.map(cl => html`
                 <div class="course-item clase-item">
                     <div class="clase-item-cab">
-                        <h3>Clase ${cl.orden}: ${cl.titulo}</h3>
+                        <h3>Clase ${cl.orden}: ${cl.titulo}
+                            ${cl.publicada === false ? html`<span class="estado-chip estado-wait"><i class="punto"></i>Borrador</span>` : ""}</h3>
                         <div class="acciones-fila">
+                            <button type="button" class="admin-btn ${cl.publicada === false ? "" : "secundario"}" data-accion="publicarClase" data-id="${cl.id}"
+                                data-valor="${cl.publicada === false ? "1" : ""}">${cl.publicada === false ? "Publicar" : "Ocultar"}</button>
                             <button type="button" class="admin-btn secundario" data-toggle="editar-clase-${cl.id}">${icono("settings")} Editar</button>
                             <button type="button" class="admin-btn danger" data-accion="eliminarClase" data-id="${cl.id}"
                                 data-confirm="¿Eliminar la clase «${cl.titulo}»? Sus actividades quedarán como generales.">Eliminar</button>
@@ -518,8 +522,13 @@ ${lab ? html`<div ${raw(panelTab("laboratorio", tab))}>${raw(contenedorLab(c, la
                 return false;
             },
             async crearClase(d) {
-                await q(sb.from("clases").insert({ curso_id: id, titulo: d.titulo.trim(), orden: Number(d.orden) || siguiente, descripcion: nulo(d.descripcion) }));
-                exito("Clase creada.");
+                const borrador = !!d.borrador;
+                await q(sb.from("clases").insert({ curso_id: id, titulo: d.titulo.trim(), orden: Number(d.orden) || siguiente, descripcion: nulo(d.descripcion), publicada: !borrador }));
+                exito(borrador ? "Clase guardada como borrador." : "Clase creada.");
+            },
+            async publicarClase(d) {
+                await q(sb.from("clases").update({ publicada: !!d.valor }).eq("id", d.id));
+                exito(d.valor ? "Clase publicada: ya la ven tus estudiantes." : "Clase oculta: volvió a borrador.");
             },
             async crearAnuncio(d) {
                 await q(sb.from("anuncios").insert({ curso_id: id, titulo: d.titulo.trim(), texto: nulo(d.texto) }));

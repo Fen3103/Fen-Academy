@@ -395,7 +395,7 @@ export async function curso({ perfil, params, query, alSalir }) {
     if (!mat) throw new ErrorFen("No estás matriculado en este curso.");
     const [anuncios, clases, recursos, { actividades, ultimas }] = await Promise.all([
         q(sb.from("anuncios").select("*, autor:perfiles(nombre)").eq("curso_id", id).order("fecha", { ascending: false })).catch(() => []),
-        q(sb.from("clases").select("*").eq("curso_id", id).order("orden").order("id")),
+        q(sb.from("clases").select("*").eq("curso_id", id).eq("publicada", true).order("orden").order("id")),
         q(sb.from("recursos").select("*, autor:perfiles(nombre)").eq("curso_id", id).order("fecha_subida", { ascending: false })),
         notasDe(perfil.id, [id]),
     ]);
